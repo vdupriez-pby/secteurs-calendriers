@@ -1,0 +1,9 @@
+# Téléchargements (carte, Base Adresse Nationale, rues OpenStreetMap) : recréés par outils/construire.py
+outils/cache/
+__pycache__/
+
+# Première version, hébergée sur claude.ai : inutile pour Apps Script
+secteur2.html
+
+# Réglages locaux de l'éditeur
+.vscode/

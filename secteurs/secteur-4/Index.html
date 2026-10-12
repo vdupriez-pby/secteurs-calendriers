@@ -1,0 +1,2508 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<base target="_blank">
+<title>Calendriers Secteur 4</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&display=swap">
+<style>
+/* Layout : appli plein écran pour téléphone — en-tête de progression, vue (liste / carte / activité), barre d'onglets en bas, fiche adresse en panneau glissant. */
+:root {
+  --bg: #f6f5f3;
+  --surface: #ffffff;
+  --sunken: #ecebe8;
+  --fg: #1c1b1a;
+  --muted: #6b6762;
+  --line: #dddad5;
+  --accent: #b3261e;
+  --accent-fg: #ffffff;
+  --todo: #8a8580;
+  --again: #c77700;
+  --done: #2e7d32;
+  --todo-soft: #ecebe8;
+  --again-soft: #fbecd2;
+  --done-soft: #dcefdc;
+  --map-bg: #efede9;
+  --map-road: #ffffff;
+  --map-road-edge: #cfcac2;
+  --map-major: #f6dfa8;
+  --map-path: #c9c4bb;
+  --map-mask: rgba(60, 55, 50, .16);
+  --shadow: 0 -6px 30px rgba(0, 0, 0, .14);
+  --display: "Barlow Condensed", "Arial Narrow", "Roboto Condensed", system-ui, sans-serif;
+  --body: "Atkinson Hyperlegible", system-ui, -apple-system, "Segoe UI", sans-serif;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #161514; --surface: #201f1d; --sunken: #2a2826; --fg: #f1efec; --muted: #a39e97; --line: #3a3734;
+    --accent: #ef6a5f; --accent-fg: #1a0b09;
+    --todo: #a39e97; --again: #f0a530; --done: #66bb6a;
+    --todo-soft: #2e2c2a; --again-soft: #3d2c10; --done-soft: #183320;
+    --map-bg: #1d1c1a; --map-road: #3e3b37; --map-road-edge: #2b2926; --map-major: #6b5523; --map-path: #4a4642;
+    --map-mask: rgba(0, 0, 0, .35); --shadow: 0 -6px 30px rgba(0, 0, 0, .5);
+    color-scheme: dark;
+  }
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html, body { height: 100%; margin: 0; }
+body {
+  background: var(--bg); color: var(--fg); font-family: var(--body); font-size: 15px; line-height: 1.45;
+  display: flex; flex-direction: column; overflow: hidden;
+  padding-top: env(safe-area-inset-top, 0px);
+}
+button, input, select, textarea { font: inherit; color: inherit; }
+button { cursor: pointer; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* En-tête */
+.top { background: var(--surface); border-bottom: 1px solid var(--line); padding: 10px 16px 8px; display: grid; gap: 8px; flex: none; }
+.brand { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+.brand h1 { margin: 0; font-family: var(--display); font-weight: 700; font-size: 24px; letter-spacing: .01em; line-height: 1.1; text-wrap: balance; }
+.brand h1 span { color: var(--accent); }
+.who { font-size: 13px; color: var(--muted); border: 1px solid var(--line); background: none; border-radius: 999px; padding: 3px 10px; white-space: nowrap; max-width: 45%; overflow: hidden; text-overflow: ellipsis; }
+.counts { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.count { display: grid; gap: 0; }
+.count b { font-family: var(--display); font-size: 26px; font-weight: 700; line-height: 1; font-variant-numeric: tabular-nums; }
+.count small { font-size: 11px; text-transform: uppercase; letter-spacing: .07em; color: var(--muted); }
+.count.todo b { color: var(--todo); } .count.again b { color: var(--again); } .count.done b { color: var(--done); }
+.bar { display: flex; height: 6px; border-radius: 3px; overflow: hidden; background: var(--todo-soft); }
+.bar i { display: block; height: 100%; transition: width .3s; }
+.bar .b-done { background: var(--done); } .bar .b-again { background: var(--again); }
+.sync { margin: 0; font-size: 12px; color: var(--muted); display: flex; align-items: center; gap: 6px; }
+.sync::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--done); }
+.sync.off::before { background: var(--again); }
+
+.notice { margin: 0; padding: 8px 16px; font-size: 13px; background: var(--again-soft); border-bottom: 1px solid var(--line); display: flex; gap: 8px; align-items: center; flex-wrap: wrap; flex: none; }
+.notice form { display: flex; gap: 6px; flex: 1 1 220px; }
+.notice input { flex: 1; min-width: 0; padding: 6px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); }
+
+/* Vues */
+main { flex: 1; min-height: 0; position: relative; }
+.view { position: absolute; inset: 0; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+
+/* Liste */
+.tools { position: sticky; top: 0; z-index: 2; background: var(--bg); padding: 10px 16px; display: grid; gap: 8px; border-bottom: 1px solid var(--line); }
+.search { width: 100%; padding: 9px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); }
+.chips { display: flex; gap: 6px; flex-wrap: wrap; }
+.chip { border: 1px solid var(--line); background: var(--surface); border-radius: 999px; padding: 4px 11px; font-size: 13px; display: inline-flex; gap: 6px; align-items: center; }
+.chip[aria-pressed="true"] { background: var(--fg); color: var(--bg); border-color: var(--fg); }
+.dot { width: 10px; height: 10px; border-radius: 50%; flex: none; display: inline-block; }
+.dot.afaire { background: transparent; border: 2px solid var(--todo); }
+.dot.repasser { background: var(--again); } .dot.valide { background: var(--done); }
+
+.street { border-bottom: 1px solid var(--line); }
+.street > button { width: 100%; display: grid; grid-template-columns: 1fr auto; gap: 4px 12px; align-items: center; padding: 11px 16px; background: var(--surface); border: 0; text-align: left; }
+.street > button h2 { margin: 0; font-family: var(--display); font-size: 19px; font-weight: 600; line-height: 1.15; min-width: 0; }
+.street > button .tally { font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.street > button .mini { grid-column: 1 / -1; }
+.street > button .mini.bar { height: 4px; }
+.street ul { list-style: none; margin: 0; padding: 0; }
+.addr { display: grid; grid-template-columns: 58px 1fr auto; gap: 10px; align-items: center; padding: 9px 16px; border-top: 1px solid var(--line); background: var(--bg); width: 100%; border-left: 0; border-right: 0; border-bottom: 0; text-align: left; }
+.addr .num { font-family: var(--display); font-weight: 700; font-size: 20px; font-variant-numeric: tabular-nums; }
+.addr .meta { min-width: 0; font-size: 13px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.addr .meta .nt { color: var(--fg); }
+.pill { font-size: 12px; border-radius: 999px; padding: 2px 9px; white-space: nowrap; display: inline-flex; gap: 5px; align-items: center; font-weight: 700; }
+.pill.afaire { background: var(--todo-soft); color: var(--muted); font-weight: 400; }
+.pill.repasser { background: var(--again-soft); color: var(--again); }
+.pill.valide { background: var(--done-soft); color: var(--done); }
+.pill .ini { font-weight: 400; opacity: .85; }
+.empty { padding: 28px 16px; color: var(--muted); text-align: center; }
+.addbtn { margin: 16px; padding: 10px 14px; border: 1px dashed var(--muted); background: none; border-radius: 10px; color: var(--muted); width: calc(100% - 32px); }
+
+/* Carte */
+#mapView { overflow: hidden; background: var(--map-bg); touch-action: none; }
+#map { width: 100%; height: 100%; display: block; user-select: none; -webkit-user-select: none; }
+#map .r-edge { fill: none; stroke: var(--map-road-edge); stroke-linecap: round; stroke-linejoin: round; }
+#map .r0 { fill: none; stroke: var(--map-path); stroke-width: 1.6; stroke-dasharray: 4 3; }
+#map .r1 { fill: none; stroke: var(--map-road); stroke-width: 7; stroke-linecap: round; stroke-linejoin: round; }
+#map .r2 { fill: none; stroke: var(--map-major); stroke-width: 10; stroke-linecap: round; stroke-linejoin: round; }
+#map .mask { fill: var(--map-mask); fill-rule: evenodd; }
+#map .zone { fill: none; stroke: var(--accent); stroke-width: 2.5; stroke-dasharray: 10 6; vector-effect: non-scaling-stroke; }
+#map .lbl { fill: var(--muted); font-family: var(--body); paint-order: stroke; stroke: var(--map-bg); stroke-width: 3px; stroke-linejoin: round; }
+#map circle { stroke: var(--surface); }
+#map circle.afaire { fill: var(--surface); stroke: var(--todo); }
+#map circle.repasser { fill: var(--again); }
+#map circle.valide { fill: var(--done); }
+#map circle.sel { stroke: var(--accent); }
+.mapctl { position: absolute; right: 12px; top: 12px; display: grid; gap: 6px; }
+.mapctl button { width: 44px; height: 44px; border-radius: 10px; border: 1px solid var(--line); background: var(--surface); font-size: 20px; line-height: 1; box-shadow: 0 1px 4px rgba(0,0,0,.12); }
+.legend { position: absolute; left: 12px; bottom: 12px; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 6px 10px; font-size: 12px; display: flex; gap: 10px; flex-wrap: wrap; max-width: calc(100% - 24px); }
+.legend span { display: inline-flex; align-items: center; gap: 5px; }
+
+/* Activité */
+.act { padding: 14px 16px 24px; display: grid; gap: 14px; max-width: 720px; margin: 0 auto; }
+.act h2 { margin: 0; font-family: var(--display); font-size: 20px; font-weight: 600; }
+.team { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; }
+.member { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; display: grid; gap: 4px; text-align: left; }
+.member[aria-pressed="true"] { border-color: var(--fg); box-shadow: inset 0 0 0 1px var(--fg); }
+.member .nm { font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.member .st { font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.member .st b { color: var(--done); } .member .st em { color: var(--again); font-style: normal; font-weight: 700; }
+.feed { list-style: none; margin: 0; padding: 0; display: grid; }
+.feed li { display: grid; grid-template-columns: auto 1fr; gap: 2px 10px; padding: 10px 0; border-bottom: 1px solid var(--line); }
+.feed li .dot { margin-top: 5px; }
+.feed .what { min-width: 0; }
+.feed .what button { background: none; border: 0; padding: 0; font-weight: 700; text-align: left; text-decoration: underline; text-decoration-color: var(--line); text-underline-offset: 3px; }
+.feed .when { grid-column: 2; font-size: 12px; color: var(--muted); }
+.feed q { font-style: italic; color: var(--muted); }
+
+/* Onglets */
+.tabs { flex: none; display: grid; grid-template-columns: repeat(3, 1fr); background: var(--surface); border-top: 1px solid var(--line); padding-bottom: env(safe-area-inset-bottom, 0px); }
+.tabs button { border: 0; background: none; padding: 10px 4px 12px; font-family: var(--display); font-size: 17px; font-weight: 600; letter-spacing: .02em; color: var(--muted); border-top: 3px solid transparent; }
+.tabs button[aria-selected="true"] { color: var(--fg); border-top-color: var(--accent); }
+
+/* Fiche adresse */
+.scrim { position: fixed; inset: 0; background: rgba(0,0,0,.35); z-index: 10; }
+.sheet { position: fixed; left: 0; right: 0; bottom: 0; z-index: 11; background: var(--surface); border-radius: 18px 18px 0 0; box-shadow: var(--shadow); max-height: 88%; overflow-y: auto; padding: 8px 16px calc(16px + env(safe-area-inset-bottom, 0px)); display: grid; gap: 14px; max-width: 640px; margin: 0 auto; }
+.grab { width: 40px; height: 4px; border-radius: 2px; background: var(--line); margin: 0 auto; }
+.sh-head { display: flex; justify-content: space-between; gap: 12px; align-items: start; }
+.sh-head h2 { margin: 0; font-family: var(--display); font-size: 26px; font-weight: 700; line-height: 1.1; text-wrap: balance; }
+.sh-head p { margin: 2px 0 0; color: var(--muted); font-size: 13px; }
+.close { border: 0; background: var(--sunken); border-radius: 50%; width: 44px; height: 44px; font-size: 24px; line-height: 1; flex: none; display: grid; place-items: center; }
+.status3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.status3 button { border: 2px solid var(--line); background: var(--bg); border-radius: 12px; padding: 12px 4px; font-family: var(--display); font-size: 18px; font-weight: 600; display: grid; justify-items: center; gap: 4px; }
+.status3 button[aria-pressed="true"].afaire { border-color: var(--todo); background: var(--todo-soft); }
+.status3 button[aria-pressed="true"].repasser { border-color: var(--again); background: var(--again-soft); color: var(--again); }
+.status3 button[aria-pressed="true"].valide { border-color: var(--done); background: var(--done-soft); color: var(--done); }
+.status3 button:disabled { opacity: .55; cursor: not-allowed; }
+.byline { margin: -6px 0 0; font-size: 13px; color: var(--muted); }
+.byline b { color: var(--fg); }
+.sec h3 { margin: 0 0 6px; font-size: 12px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); font-weight: 700; }
+.notes { list-style: none; margin: 0 0 8px; padding: 0; display: grid; gap: 8px; }
+.notes li { background: var(--bg); border: 1px solid var(--line); border-radius: 10px; padding: 8px 10px; display: grid; gap: 2px; }
+.notes .tx { white-space: pre-wrap; overflow-wrap: anywhere; }
+.notes .by { font-size: 12px; color: var(--muted); display: flex; justify-content: space-between; gap: 8px; }
+.notes .by button { border: 0; background: none; color: var(--accent); font-size: 12px; padding: 0; }
+.noteform { display: grid; gap: 6px; }
+.noteform textarea { width: 100%; min-height: 64px; resize: vertical; padding: 8px 10px; border: 1px solid var(--line); border-radius: 10px; background: var(--bg); }
+.btn { border: 0; border-radius: 10px; padding: 11px 14px; background: var(--accent); color: var(--accent-fg); font-weight: 700; }
+.btn.ghost { background: var(--sunken); color: var(--fg); font-weight: 400; }
+.btn:disabled { opacity: .5; }
+.row { display: flex; gap: 8px; flex-wrap: wrap; }
+.row > * { flex: 1 1 140px; text-align: center; text-decoration: none; }
+details summary { cursor: pointer; font-size: 12px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); font-weight: 700; }
+.hist { list-style: none; margin: 8px 0 0; padding: 0; font-size: 13px; display: grid; gap: 4px; }
+.hist li span { color: var(--muted); }
+.form-grid { display: grid; gap: 8px; }
+.form-grid label { display: grid; gap: 3px; font-size: 13px; color: var(--muted); }
+.form-grid input, .form-grid select { padding: 9px 10px; border: 1px solid var(--line); border-radius: 10px; background: var(--bg); color: var(--fg); }
+.toast { position: fixed; left: 50%; bottom: calc(76px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); background: var(--fg); color: var(--bg); padding: 9px 16px; border-radius: 10px; font-size: 14px; z-index: 20; max-width: calc(100% - 32px); }
+@media (prefers-reduced-motion: reduce) { .bar i { transition: none; } }
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="brand">
+    <h1>Calendriers <span>Secteur 4</span></h1>
+    <button class="who" id="whoBtn" type="button">Prénom ?</button>
+  </div>
+  <div class="counts" aria-live="polite">
+    <div class="count todo"><b id="nTodo">–</b><small>À faire</small></div>
+    <div class="count again"><b id="nAgain">–</b><small>À repasser</small></div>
+    <div class="count done"><b id="nDone">–</b><small>Validées</small></div>
+  </div>
+  <div class="bar" aria-hidden="true"><i class="b-done" id="barDone" style="width:0"></i><i class="b-again" id="barAgain" style="width:0"></i></div>
+  <p class="sync off" id="sync">Connexion…</p>
+</header>
+<p class="notice" id="bootMsg">Chargement… Si ce message reste affiché, le fichier « Index » est incomplet dans Apps Script : recollez-le en entier puis redéployez.</p>
+<p class="notice" id="notice" hidden></p>
+<div class="notice" id="codePrompt" hidden>
+  <span>Entrez le code d'accès donné par l'organisateur.</span>
+  <form id="codeForm"><input id="codeInput" maxlength="30" placeholder="Code d'accès" autocomplete="off" inputmode="numeric"><button class="btn" type="submit">OK</button></form>
+</div>
+<div class="notice" id="namePrompt" hidden>
+  <span>Votre prénom signe vos passages et vos notes.</span>
+  <form id="nameForm"><input id="nameInput" maxlength="30" placeholder="Votre prénom" autocomplete="given-name"><button class="btn" type="submit">OK</button></form>
+</div>
+
+<main>
+  <section class="view" id="listView" aria-label="Liste des adresses">
+    <div class="tools">
+      <input class="search" id="q" type="search" placeholder="Rechercher une rue, un numéro, une note…" autocomplete="off">
+      <div class="chips" id="filters" role="group" aria-label="Filtrer par statut">
+        <button class="chip" data-f="tous" aria-pressed="true" type="button">Toutes</button>
+        <button class="chip" data-f="afaire" aria-pressed="false" type="button"><span class="dot afaire"></span>À faire</button>
+        <button class="chip" data-f="repasser" aria-pressed="false" type="button"><span class="dot repasser"></span>À repasser</button>
+        <button class="chip" data-f="valide" aria-pressed="false" type="button"><span class="dot valide"></span>Validées</button>
+        <button class="chip" data-f="notes" aria-pressed="false" type="button">Avec note</button>
+      </div>
+    </div>
+    <div id="streets"></div>
+    <button class="addbtn" id="addAddr" type="button">+ Ajouter une adresse absente de la liste</button>
+  </section>
+
+  <section class="view" id="mapView" aria-label="Carte du secteur" hidden>
+    <svg id="map" role="img" aria-label="Carte des adresses du Secteur 4"></svg>
+    <div class="mapctl">
+      <button type="button" id="zin" aria-label="Zoomer">+</button>
+      <button type="button" id="zout" aria-label="Dézoomer">−</button>
+      <button type="button" id="zfit" aria-label="Voir tout le secteur">⤢</button>
+    </div>
+    <div class="legend"><span><i class="dot afaire"></i>À faire</span><span><i class="dot repasser"></i>À repasser</span><span><i class="dot valide"></i>Validée</span></div>
+  </section>
+
+  <section class="view" id="actView" aria-label="Activité" hidden>
+    <div class="act">
+      <h2>L'équipe</h2>
+      <div class="team" id="team"></div>
+      <h2 id="feedTitle">Derniers passages</h2>
+      <ul class="feed" id="feed"></ul>
+    </div>
+  </section>
+</main>
+
+<nav class="tabs" role="tablist">
+  <button role="tab" type="button" data-tab="listView" aria-selected="true">Liste</button>
+  <button role="tab" type="button" data-tab="mapView" aria-selected="false">Carte</button>
+  <button role="tab" type="button" data-tab="actView" aria-selected="false">Activité</button>
+</nav>
+
+<div class="scrim" id="scrim" hidden></div>
+<section class="sheet" id="sheet" role="dialog" aria-modal="true" aria-labelledby="shTitle" hidden></section>
+<div class="toast" id="toast" role="status" hidden></div>
+
+<script>
+const DATA = {
+"poly":[[5.779114,45.223582],[5.780039,45.223803],[5.780171,45.223776],[5.780249,45.223718],[5.780405,45.223706],[5.781152,45.223965],[5.781461,45.223699],[5.781657,45.22358],[5.781928,45.223278],[5.782042,45.222873],[5.78332,45.221957],[5.783675,45.222196],[5.78567,45.222015],[5.785969,45.221746],[5.786848,45.222091],[5.78712,45.221594],[5.788398,45.220874],[5.788763,45.220369],[5.791573,45.222008],[5.792816,45.222953],[5.795084,45.224109],[5.795296,45.224178],[5.795129,45.225065],[5.795124,45.225521],[5.795026,45.22576],[5.794966,45.226015],[5.79483,45.226239],[5.794803,45.22635],[5.794411,45.226926],[5.793915,45.227455],[5.793688,45.227681],[5.793146,45.228152],[5.792755,45.228715],[5.792529,45.228917],[5.792292,45.229104],[5.791364,45.230158],[5.791362,45.230541],[5.790964,45.2312],[5.790309,45.231753],[5.786059,45.23579],[5.779439,45.242627],[5.771864,45.237611],[5.766242,45.235465],[5.774818,45.226953],[5.777021,45.22598],[5.777461,45.224801],[5.776141,45.224204],[5.7783,45.222221],[5.778441,45.222792],[5.77859,45.222925],[5.779095,45.223101],[5.779114,45.223582]],
+"center":[5.78077,45.2315],
+"commune":"Meylan",
+"streets":[
+"Avenue des 7 Laux",
+"Chemin de la Bâtie",
+"Impasse de Belledonne",
+"Impasse Bellevue",
+"Allée du Boutet",
+"Chemin du Boutet",
+"impasse du boutet",
+"Chemin du Bruchet",
+"Chemin des Buisses",
+"Allée de Château Corbeau",
+"Chemin de la Chicane",
+"Chemin Clos Buisson",
+"Allée du Clos de la Ville",
+"Allée des Contamines",
+"Chemin de la Cordeliere",
+"Chemin de la Croix des Rameaux",
+"Impasse de la Détourbe",
+"Chemin de l'Église",
+"Impasse de l'Église",
+"Allée des Érables",
+"Allée des Etreires",
+"Allée des Florentines",
+"Allée de Fontaine Galante",
+"Chemin de la Garance",
+"Allée du Grand Carré",
+"Allée de Jaillières",
+"Chemin de Jaillières",
+"Chemin du Labyrinthe",
+"Chemin du Miraillet",
+"Chemin de Montlivet",
+"Allée des Orchidées",
+"Allée des Pervenches",
+"Allée du Pré Catlan",
+"Allée de Pré Fleuri",
+"Allée de la Queyrassine",
+"Chemin de Rochasson",
+"Allée de Rochebelle",
+"Allée de la Treille",
+"Chemin des Villauds",
+"Chemin de la Ville"
+],
+"communes":["Meylan","Biviers"],
+"addrs":[
+["38229_0720_00002","2",0,0,5.795111,45.224191],
+["38229_0720_00004","4",0,0,5.794875,45.224077],
+["38229_0720_00006","6",0,0,5.794619,45.22396],
+["38229_0720_00008","8",0,0,5.794204,45.223774],
+["38229_0720_00008_bis","8 bis",0,0,5.794204,45.223724],
+["38229_0720_00008_ter","8 ter",0,0,5.794161,45.223704],
+["38229_0720_00010","10",0,0,5.794064,45.223687],
+["38229_0720_00018","18",0,0,5.790321,45.221344],
+["38229_0720_00022","22",0,0,5.789395,45.220803],
+["38229_0720_00022_bis","22 bis",0,0,5.789394,45.220791],
+["38229_0720_00024","24",0,0,5.789332,45.220783],
+["38229_0720_00026","26",0,0,5.788734,45.220452],
+["38229_0050_00001","1",1,0,5.788548,45.228148],
+["38229_0050_00001_bis","1 bis",1,0,5.788384,45.228211],
+["38229_0050_00002","2",1,0,5.788347,45.228316],
+["38229_0050_00003","3",1,0,5.78787,45.228513],
+["38229_0050_00005","5",1,0,5.7878,45.22857],
+["38229_0050_00020","20",1,0,5.785964,45.229307],
+["38229_0050_00022","22",1,0,5.785827,45.229331],
+["38229_0050_00024","24",1,0,5.785765,45.229407],
+["38229_0050_00025","25",1,0,5.785721,45.229191],
+["38229_0050_00026","26",1,0,5.785718,45.229375],
+["38229_0050_00027","27",1,0,5.785026,45.229635],
+["38229_0050_00028","28",1,0,5.78576,45.229271],
+["38229_0050_00029","29",1,0,5.784809,45.229761],
+["38229_0050_00030","30",1,0,5.785602,45.22932],
+["38229_0050_00032","32",1,0,5.785409,45.229416],
+["38229_0050_00032_bis","32 bis",1,0,5.785309,45.229499],
+["38229_0050_00032_ter","32 ter",1,0,5.785205,45.2296],
+["38229_0050_00034","34",1,0,5.785077,45.229688],
+["38229_0050_00039","39",1,0,5.783591,45.230888],
+["38229_0050_00045","45",1,0,5.783534,45.23095],
+["38229_0050_00046","46",1,0,5.784315,45.230275],
+["38229_0050_00048","48",1,0,5.784108,45.230453],
+["38229_0050_00050","50",1,0,5.783645,45.230947],
+["38229_0050_00052","52",1,0,5.783391,45.231203],
+["38229_0050_00056","56",1,0,5.782885,45.231494],
+["38229_0090_00001","1",2,0,5.79414,45.226585],
+["38229_0090_00002","2",2,0,5.794072,45.226676],
+["38229_0090_00002_bis","2 bis",2,0,5.793977,45.226618],
+["38229_0090_00002_ter","2 ter",2,0,5.794226,45.226743],
+["38229_0090_00003","3",2,0,5.794058,45.226538],
+["38229_0090_00004","4",2,0,5.793725,45.226478],
+["38229_0090_00005","5",2,0,5.793738,45.226381],
+["38229_0090_00006","6",2,0,5.793463,45.226344],
+["38229_0090_00006_bis","6 bis",2,0,5.793608,45.226412],
+["38229_0090_00007","7",2,0,5.79357,45.226296],
+["38229_0090_00008","8",2,0,5.793321,45.226257],
+["38229_0090_00009","9",2,0,5.793349,45.226179],
+["38229_0090_00010","10",2,0,5.793139,45.226167],
+["38229_0090_00011","11",2,0,5.793294,45.226134],
+["38229_0090_00012","12",2,0,5.792997,45.226088],
+["38229_0090_00012_bis","12 bis",2,0,5.792639,45.225885],
+["38229_0090_00013","13",2,0,5.792974,45.225983],
+["38229_0090_00014","14",2,0,5.792582,45.225724],
+["38229_0090_00015","15",2,0,5.792801,45.225888],
+["38229_0090_00017","17",2,0,5.79269,45.225785],
+["38229_0090_00019","19",2,0,5.792616,45.22557],
+["38229_0100_00001","1",3,0,5.789207,45.227091],
+["38229_0100_00001_bis","1 bis",3,0,5.789471,45.227209],
+["38229_0100_00002","2",3,0,5.789206,45.227155],
+["38229_0100_00003","3",3,0,5.788921,45.226954],
+["38229_0100_00004","4",3,0,5.788876,45.226993],
+["38229_0100_00005","5",3,0,5.788629,45.2268],
+["38229_0100_00006","6",3,0,5.788277,45.226728],
+["38229_0100_00006_bis","6 bis",3,0,5.78865,45.226889],
+["38229_0100_00007","7",3,0,5.788245,45.226594],
+["38229_0100_00008","8",3,0,5.788037,45.226608],
+["38229_0100_00009","9",3,0,5.7881,45.226555],
+["38229_0131_00002","2",4,0,5.789816,45.230037],
+["38229_0131_00004","4",4,0,5.790237,45.230306],
+["38229_0131_00005","5",4,0,5.78979,45.230058],
+["38229_0131_00006","6",4,0,5.79041,45.23041],
+["38229_0131_00008","8",4,0,5.790816,45.230695],
+["38229_0131_00009","9",4,0,5.790385,45.23049],
+["38229_0131_00011","11",4,0,5.790549,45.230624],
+["38229_0120_00002","2",5,0,5.789738,45.229393],
+["38229_0120_00004","4",5,0,5.789787,45.229586],
+["38229_0120_00005","5",5,0,5.789519,45.230114],
+["38229_0120_00007","7",5,0,5.789469,45.230177],
+["38229_0120_00010","10",5,0,5.78948,45.230793],
+["38229_0120_00011","11",5,0,5.789157,45.231152],
+["38229_0120_00012","12",5,0,5.789453,45.230964],
+["38229_0120_00013","13",5,0,5.789338,45.230378],
+["38229_0120_00014","14",5,0,5.789159,45.231232],
+["38229_0120_00015","15",5,0,5.788825,45.23039],
+["38229_0120_00016","16",5,0,5.788807,45.231074],
+["38229_0120_00018","18",5,0,5.788372,45.230703],
+["38229_0120_00030","30",5,0,5.786261,45.22942],
+["38229_0120_00033","33",5,0,5.785358,45.228963],
+["38229_0120_00035","35",5,0,5.784957,45.228754],
+["38229_0120_00036","36",5,0,5.78481,45.228767],
+["38045_0140_00013","13",6,1,5.790752,45.231202],
+["38229_0140_00001","1",7,0,5.777145,45.224508],
+["38229_0140_00003","3",7,0,5.777205,45.224532],
+["38229_0140_00005","5",7,0,5.777396,45.225396],
+["38229_0160_00001","1",8,0,5.785698,45.22406],
+["38229_0160_00003","3",8,0,5.785382,45.223433],
+["38229_0160_00005","5",8,0,5.78482,45.222858],
+["38229_0160_00006","6",8,0,5.785529,45.223828],
+["38229_0160_00007","7",8,0,5.784905,45.222857],
+["38229_0160_00008","8",8,0,5.785264,45.223434],
+["38229_0160_00009","9",8,0,5.78469,45.2227],
+["38229_0160_00010","10",8,0,5.784765,45.223241],
+["38229_0160_00011","11",8,0,5.78417,45.222784],
+["38229_0160_00012","12",8,0,5.784666,45.223176],
+["38229_0160_00012_bis","12 bis",8,0,5.784639,45.223166],
+["38229_0160_00013","13",8,0,5.783117,45.222431],
+["38229_0160_00014","14",8,0,5.784588,45.223148],
+["38229_0160_00016","16",8,0,5.784,45.22276],
+["38229_0160_00018","18",8,0,5.783451,45.22243],
+["38229_0160_00020","20",8,0,5.783077,45.222505],
+["38229_0160_00022","22",8,0,5.783024,45.222463],
+["38229_0160_00024","24",8,0,5.782965,45.222407],
+["38229_0160_00026","26",8,0,5.782917,45.222362],
+["38229_0160_00028","28",8,0,5.782882,45.222328],
+["38229_0265_00002","2",9,0,5.784285,45.229837],
+["38229_0265_00004","4",9,0,5.78375,45.229955],
+["38229_0265_00006","6",9,0,5.783633,45.229834],
+["38229_0265_00008","8",9,0,5.783689,45.229976],
+["38229_0265_00010","10",9,0,5.783508,45.229762],
+["38229_0265_00012","12",9,0,5.783281,45.22958],
+["38229_0265_00014","14",9,0,5.783315,45.229541],
+["38229_0265_00016","16",9,0,5.783911,45.229696],
+["38229_0280_00001","1",10,0,5.789255,45.228094],
+["38229_0280_00001_bis","1 bis",10,0,5.789287,45.228066],
+["38229_0280_00002","2",10,0,5.789133,45.228131],
+["38229_0280_00002_bis","2 bis",10,0,5.789146,45.227701],
+["38229_0280_00004","4",10,0,5.789054,45.227672],
+["38229_0280_00004_bis","4 bis",10,0,5.788751,45.227536],
+["38229_0280_00005","5",10,0,5.79004,45.227387],
+["38229_0280_00006","6",10,0,5.789707,45.227594],
+["38229_0280_00008","8",10,0,5.790139,45.227188],
+["38229_0280_00009","9",10,0,5.79056,45.226956],
+["38229_0280_00011","11",10,0,5.790801,45.226712],
+["38229_0280_00011_bis","11 bis",10,0,5.79083,45.226694],
+["38229_0280_00013","13",10,0,5.790986,45.22654],
+["38229_0280_00014","14",10,0,5.790958,45.226448],
+["38229_0280_00015","15",10,0,5.791093,45.226424],
+["38229_0280_00016","16",10,0,5.791454,45.226011],
+["38229_0280_00017","17",10,0,5.791488,45.226061],
+["38229_0280_00019","19",10,0,5.79157,45.225995],
+["38229_0280_00020","20",10,0,5.79299,45.224665],
+["38229_0280_00021","21",10,0,5.791727,45.225861],
+["38229_0280_00021_bis","21 bis",10,0,5.792375,45.226322],
+["38229_0280_00023","23",10,0,5.791861,45.22571],
+["38229_0280_00025","25",10,0,5.792399,45.225281],
+["38229_0280_00027","27",10,0,5.792542,45.225146],
+["38229_0280_00029_a","29 a",10,0,5.792639,45.225063],
+["38229_0280_00029_b","29 b",10,0,5.792613,45.225094],
+["38229_0280_00029_c","29 c",10,0,5.7926,45.225108],
+["38229_0280_00031","31",10,0,5.793487,45.224287],
+["38229_0280_00033","33",10,0,5.793512,45.224251],
+["38229_0280_00035","35",10,0,5.793913,45.223772],
+["38229_0290_00001","1",11,0,5.781755,45.225865],
+["38229_0290_00002","2",11,0,5.78123,45.225822],
+["38229_0290_00003","3",11,0,5.781358,45.225774],
+["38229_0290_00005","5",11,0,5.779622,45.225387],
+["38229_0290_00007","7",11,0,5.779033,45.225103],
+["38229_0290_00008","8",11,0,5.779673,45.225513],
+["38229_0290_00012","12",11,0,5.778856,45.225074],
+["38229_0290_00014","14",11,0,5.778686,45.224984],
+["38229_0295_00002","2",12,0,5.783604,45.222894],
+["38229_0295_00004","4",12,0,5.783214,45.223134],
+["38229_0295_00006","6",12,0,5.783081,45.223134],
+["38229_0295_00008","8",12,0,5.783169,45.2233],
+["38229_0295_00010","10",12,0,5.783239,45.223297],
+["38229_0295_00012","12",12,0,5.783244,45.223239],
+["38229_0300_00001","1",13,0,5.794684,45.22542],
+["38229_0300_00002","2",13,0,5.794621,45.225496],
+["38229_0300_00003","3",13,0,5.794345,45.225265],
+["38229_0300_00004","4",13,0,5.794457,45.225482],
+["38229_0300_00005","5",13,0,5.793944,45.225077],
+["38229_0300_00006","6",13,0,5.794151,45.225277],
+["38229_0300_00007","7",13,0,5.793771,45.224994],
+["38229_0300_00008","8",13,0,5.793729,45.225069],
+["38229_0300_00009","9",13,0,5.793331,45.224783],
+["38229_0300_00010","10",13,0,5.793383,45.224895],
+["38229_0310_00002","2",14,0,5.779599,45.227749],
+["38229_0310_00004","4",14,0,5.779083,45.227782],
+["38229_0310_00006","6",14,0,5.778792,45.228122],
+["38229_0310_00008","8",14,0,5.778816,45.228154],
+["38229_0310_00016","16",14,0,5.778748,45.228315],
+["38229_0310_00018","18",14,0,5.778408,45.228574],
+["38229_0310_00020","20",14,0,5.7786,45.228628],
+["38229_0316_00002","2",15,0,5.781211,45.224268],
+["38229_0316_00004","4",15,0,5.781768,45.224594],
+["38229_0316_00006","6",15,0,5.782054,45.224791],
+["38229_0316_00007","7",15,0,5.780201,45.225256],
+["38229_0316_00008","8",15,0,5.7817,45.224657],
+["38229_0316_00009","9",15,0,5.78035,45.226137],
+["38229_0316_00010","10",15,0,5.781015,45.224285],
+["38229_0316_00011","11",15,0,5.779776,45.226018],
+["38229_0316_00012","12",15,0,5.780835,45.224893],
+["38229_0316_00013","13",15,0,5.779607,45.226115],
+["38229_0316_00014","14",15,0,5.781937,45.225229],
+["38229_0316_00015","15",15,0,5.779631,45.226153],
+["38229_0316_00016","16",15,0,5.781504,45.225129],
+["38229_0316_00017","17",15,0,5.779664,45.226188],
+["38229_0316_00018","18",15,0,5.781015,45.225322],
+["38229_0316_00019","19",15,0,5.780206,45.226257],
+["38229_0316_00020","20",15,0,5.780956,45.225353],
+["38229_0316_00022","22",15,0,5.78085,45.225311],
+["38229_0316_00024","24",15,0,5.780582,45.224801],
+["38229_0316_00024_bis","24 bis",15,0,5.780609,45.22598],
+["38229_0316_00026","26",15,0,5.780537,45.226519],
+["38229_0316_00028","28",15,0,5.780484,45.226708],
+["38229_0330_00001","1",16,0,5.79247,45.223143],
+["38229_0330_00002","2",16,0,5.792562,45.223179],
+["38229_0330_00003","3",16,0,5.792178,45.223393],
+["38229_0330_00004","4",16,0,5.792268,45.22361],
+["38229_0330_00005","5",16,0,5.791878,45.223449],
+["38229_0330_00006","6",16,0,5.791952,45.223625],
+["38229_0330_00006_bis","6 bis",16,0,5.792019,45.223636],
+["38229_0330_00006_ter","6 ter",16,0,5.792102,45.223656],
+["38229_0350_00003","3",17,0,5.790447,45.229481],
+["38229_0350_00005","5",17,0,5.790592,45.229348],
+["38229_0350_00006","6",17,0,5.7909,45.229816],
+["38229_0350_00007","7",17,0,5.790553,45.229297],
+["38229_0350_00008","8",17,0,5.790732,45.229763],
+["38229_0350_00009","9",17,0,5.790316,45.229205],
+["38229_0350_00010","10",17,0,5.790644,45.229802],
+["38229_0350_00011","11",17,0,5.789977,45.229222],
+["38229_0350_00012","12",17,0,5.790475,45.229824],
+["38229_0350_00014","14",17,0,5.790474,45.229802],
+["38229_0350_00015","15",17,0,5.789485,45.228804],
+["38229_0350_00015_bis","15 bis",17,0,5.789524,45.228629],
+["38229_0350_00016","16",17,0,5.790522,45.229641],
+["38229_0350_00017","17",17,0,5.789542,45.228546],
+["38229_0350_00018","18",17,0,5.790376,45.229667],
+["38229_0350_00020","20",17,0,5.79026,45.229695],
+["38229_0350_00022","22",17,0,5.790172,45.229356],
+["38229_0350_00023","23",17,0,5.788068,45.227458],
+["38229_0350_00024","24",17,0,5.790055,45.229295],
+["38229_0350_00025","25",17,0,5.787093,45.226559],
+["38229_0350_00025_bis","25 bis",17,0,5.786951,45.226489],
+["38229_0350_00026","26",17,0,5.789938,45.229253],
+["38229_0350_00027","27",17,0,5.785724,45.22615],
+["38229_0350_00028","28",17,0,5.789604,45.229168],
+["38229_0350_00029","29",17,0,5.784599,45.225635],
+["38229_0350_00030","30",17,0,5.789006,45.228261],
+["38229_0350_00031","31",17,0,5.783986,45.225263],
+["38229_0350_00032","32",17,0,5.788884,45.228214],
+["38229_0350_00032_bis","32 bis",17,0,5.788847,45.228196],
+["38229_0350_00033","33",17,0,5.782112,45.224038],
+["38229_0350_00034","34",17,0,5.788773,45.228147],
+["38229_0350_00035","35",17,0,5.782086,45.224016],
+["38229_0350_00036","36",17,0,5.788623,45.228042],
+["38229_0350_00037","37",17,0,5.781883,45.223353],
+["38229_0350_00037_bis","37 bis",17,0,5.781904,45.223362],
+["38229_0350_00038","38",17,0,5.788525,45.227987],
+["38229_0350_00039","39",17,0,5.782055,45.222926],
+["38229_0350_00040","40",17,0,5.788398,45.227928],
+["38229_0350_00040_bis","40 bis",17,0,5.788213,45.227956],
+["38229_0350_00042","42",17,0,5.788339,45.227847],
+["38229_0350_00044","44",17,0,5.788084,45.22759],
+["38229_0350_00046","46",17,0,5.787618,45.227017],
+["38229_0350_00048","48",17,0,5.787143,45.22666],
+["38229_0350_00050","50",17,0,5.786985,45.226574],
+["38229_0350_00052","52",17,0,5.786704,45.22649],
+["38229_0350_00064","64",17,0,5.783399,45.225318],
+["38229_0350_00064_bis","64 bis",17,0,5.783244,45.225591],
+["38229_0350_00066","66",17,0,5.783185,45.225606],
+["38229_0350_00068","68",17,0,5.782852,45.225458],
+["38229_0350_00070","70",17,0,5.782983,45.225357],
+["38229_0350_00072","72",17,0,5.782915,45.224635],
+["38229_0352_00002","2",18,0,5.786899,45.226575],
+["38229_0352_00004","4",18,0,5.786682,45.226754],
+["38229_0352_00004_bis","4 bis",18,0,5.786523,45.22686],
+["38229_0352_00004_ter","4 ter",18,0,5.786593,45.227159],
+["38229_0352_00006","6",18,0,5.786487,45.227684],
+["38229_0352_00006_bis","6 bis",18,0,5.786432,45.227306],
+["38229_0352_00008","8",18,0,5.786356,45.226954],
+["38229_0357_00001","1",19,0,5.781226,45.227327],
+["38229_0357_00002","2",19,0,5.781119,45.227373],
+["38229_0357_00003","3",19,0,5.780833,45.22721],
+["38229_0357_00003_bis","3 bis",19,0,5.780584,45.227088],
+["38229_0357_00004","4",19,0,5.780639,45.22721],
+["38229_0357_00004_bis","4 bis",19,0,5.780128,45.227066],
+["38229_0357_00004_ter","4 ter",19,0,5.779975,45.227044],
+["38229_0357_00005","5",19,0,5.780277,45.226983],
+["38229_0357_00006","6",19,0,5.779488,45.227014],
+["38229_0357_00007","7",19,0,5.779322,45.226839],
+["38229_0357_00008","8",19,0,5.779074,45.226864],
+["38229_0357_00009","9",19,0,5.779027,45.226626],
+["38229_0355_00001","1",20,0,5.790521,45.226751],
+["38229_0355_00002","2",20,0,5.790456,45.226785],
+["38229_0355_00003","3",20,0,5.789942,45.226469],
+["38229_0355_00004","4",20,0,5.789857,45.226508],
+["38229_0355_00005","5",20,0,5.789448,45.226234],
+["38229_0355_00006","6",20,0,5.789445,45.226309],
+["38229_0355_00007","7",20,0,5.788945,45.226004],
+["38229_0355_00008","8",20,0,5.788869,45.226065],
+["38229_0366_00001","1",21,0,5.791834,45.227394],
+["38229_0366_00002","2",21,0,5.791423,45.227966],
+["38229_0366_00003","3",21,0,5.791584,45.227216],
+["38229_0366_00004","4",21,0,5.791319,45.227912],
+["38229_0366_00005","5",21,0,5.791676,45.227114],
+["38229_0366_00006","6",21,0,5.791233,45.227908],
+["38229_0366_00007","7",21,0,5.791822,45.22715],
+["38229_0366_00008","8",21,0,5.791148,45.227985],
+["38229_0366_00009","9",21,0,5.79193,45.227195],
+["38229_0366_00010","10",21,0,5.791186,45.228051],
+["38229_0366_00011","11",21,0,5.791971,45.227422],
+["38229_0366_00012","12",21,0,5.791297,45.228116],
+["38229_0366_00013","13",21,0,5.792104,45.227896],
+["38229_0366_00014","14",21,0,5.791374,45.228103],
+["38229_0366_00015","15",21,0,5.792161,45.227918],
+["38229_0366_00016","16",21,0,5.791835,45.228509],
+["38229_0366_00017","17",21,0,5.792579,45.227658],
+["38229_0366_00017_bis","17 bis",21,0,5.792725,45.227696],
+["38229_0366_00017_ter","17 ter",21,0,5.792812,45.227732],
+["38229_0366_00018","18",21,0,5.791748,45.228598],
+["38229_0366_00019","19",21,0,5.792686,45.227875],
+["38229_0366_00020","20",21,0,5.791741,45.228666],
+["38229_0366_00021","21",21,0,5.792488,45.228006],
+["38229_0366_00023","23",21,0,5.792136,45.22822],
+["38229_0366_00025","25",21,0,5.792164,45.228281],
+["38229_0366_00027","27",21,0,5.792189,45.228432],
+["38229_0366_00029","29",21,0,5.792062,45.228628],
+["38229_0366_00031","31",21,0,5.791953,45.228739],
+["38229_0366_00033","33",21,0,5.791887,45.228733],
+["38229_0363_00001","1",22,0,5.789732,45.226877],
+["38229_0363_00003","3",22,0,5.789611,45.226803],
+["38229_0363_00005","5",22,0,5.789074,45.226537],
+["38229_0363_00007","7",22,0,5.788987,45.226566],
+["38229_0370_00001","1",23,0,5.784963,45.231611],
+["38229_0370_00002","2",23,0,5.784968,45.231171],
+["38229_0370_00003","3",23,0,5.784765,45.231249],
+["38229_0370_00004","4",23,0,5.78499,45.231126],
+["38229_0370_00006","6",23,0,5.784909,45.231038],
+["38229_0186_00002","2",24,0,5.783331,45.230838],
+["38229_0186_00004","4",24,0,5.782907,45.230609],
+["38229_0186_00006","6",24,0,5.782507,45.230375],
+["38229_0186_00007","7",24,0,5.782005,45.229847],
+["38229_0186_00008","8",24,0,5.782244,45.230213],
+["38229_0186_00010","10",24,0,5.781798,45.229847],
+["38229_0449_00002","2",25,0,5.790543,45.221982],
+["38229_0449_00003","3",25,0,5.790402,45.222034],
+["38229_0449_00004","4",25,0,5.790813,45.222154],
+["38229_0449_00005","5",25,0,5.790451,45.222439],
+["38229_0449_00006","6",25,0,5.790859,45.222201],
+["38229_0449_00008","8",25,0,5.790722,45.222395],
+["38229_0449_00010","10",25,0,5.790576,45.222524],
+["38229_0450_00002","2",26,0,5.787581,45.226441],
+["38229_0450_00004","4",26,0,5.787861,45.226142],
+["38229_0450_00006","6",26,0,5.788213,45.22564],
+["38229_0450_00006_bis","6 bis",26,0,5.788312,45.225484],
+["38229_0450_00008","8",26,0,5.788438,45.225305],
+["38229_0450_00008_bis","8 bis",26,0,5.787837,45.225116],
+["38229_0450_00010","10",26,0,5.788659,45.22499],
+["38229_0450_00012","12",26,0,5.788837,45.224722],
+["38229_0450_00012_bis","12 bis",26,0,5.788926,45.224626],
+["38229_0450_00012_ter","12 ter",26,0,5.78828,45.224461],
+["38229_0450_00014","14",26,0,5.789365,45.223987],
+["38229_0450_00015","15",26,0,5.789328,45.224211],
+["38229_0450_00016","16",26,0,5.789463,45.223846],
+["38229_0450_00016_bis","16 bis",26,0,5.789638,45.223627],
+["38229_0450_00017","17",26,0,5.79009,45.223042],
+["38229_0450_00018","18",26,0,5.78988,45.223369],
+["38229_0450_00019","19",26,0,5.789832,45.222519],
+["38229_0450_00020","20",26,0,5.789544,45.223003],
+["38229_0450_00021","21",26,0,5.789681,45.222286],
+["38229_0450_00022","22",26,0,5.789396,45.223032],
+["38229_0450_00024","24",26,0,5.789296,45.222901],
+["38229_0450_00026","26",26,0,5.789672,45.22285],
+["38229_0450_00028","28",26,0,5.789632,45.222378],
+["38229_0470_00001","1",27,0,5.781039,45.224],
+["38229_0470_00003","3",27,0,5.780142,45.223834],
+["38229_0550_00001","1",28,0,5.782992,45.228163],
+["38229_0550_00001_bis","1 bis",28,0,5.782947,45.228164],
+["38229_0550_00002","2",28,0,5.783027,45.228208],
+["38229_0550_00003","3",28,0,5.782666,45.228167],
+["38229_0550_00004","4",28,0,5.782576,45.22822],
+["38229_0550_00006","6",28,0,5.782523,45.228231],
+["38229_0550_00009","9",28,0,5.781432,45.228034],
+["38229_0550_00010","10",28,0,5.781282,45.228115],
+["38229_0550_00012","12",28,0,5.781192,45.228117],
+["38229_0550_00014","14",28,0,5.781268,45.228164],
+["38229_0570_00001","1",29,0,5.783007,45.231475],
+["38229_0570_00002","2",29,0,5.78449,45.231781],
+["38229_0570_00003","3",29,0,5.783887,45.231648],
+["38229_0570_00004","4",29,0,5.78638,45.231626],
+["38229_0570_00005","5",29,0,5.784499,45.231857],
+["38229_0570_00007","7",29,0,5.785165,45.231829],
+["38229_0570_00009","9",29,0,5.785406,45.231791],
+["38229_0570_00011","11",29,0,5.786407,45.2317],
+["38229_0570_00013","13",29,0,5.787319,45.231646],
+["38229_0592_00002","2",30,0,5.786555,45.228965],
+["38229_0592_00004","4",30,0,5.786525,45.228957],
+["38229_0592_00006","6",30,0,5.786467,45.228951],
+["38229_0592_00008","8",30,0,5.786431,45.228947],
+["38229_0592_00010","10",30,0,5.786108,45.228936],
+["38229_0592_00012","12",30,0,5.786108,45.2289],
+["38229_0592_00014","14",30,0,5.786296,45.22858],
+["38229_0592_00016","16",30,0,5.786426,45.228724],
+["38229_0592_00018","18",30,0,5.78695,45.229053],
+["38229_0609_00001","1",31,0,5.781193,45.23012],
+["38229_0609_00002","2",31,0,5.780552,45.230069],
+["38229_0609_00003","3",31,0,5.781004,45.229989],
+["38229_0609_00005","5",31,0,5.780849,45.229938],
+["38229_0609_00007","7",31,0,5.780857,45.230026],
+["38229_0638_00001","1",32,0,5.787439,45.230594],
+["38229_0638_00002","2",32,0,5.787024,45.230818],
+["38229_0638_00002_a","2 a",32,0,5.78652,45.23081],
+["38229_0638_00003","3",32,0,5.787114,45.23044],
+["38229_0638_00004","4",32,0,5.786214,45.230663],
+["38229_0638_00005","5",32,0,5.786932,45.230373],
+["38229_0638_00006","6",32,0,5.786051,45.230578],
+["38229_0638_00007","7",32,0,5.786887,45.230413],
+["38229_0638_00008","8",32,0,5.785759,45.230435],
+["38229_0638_00009","9",32,0,5.78723,45.230747],
+["38229_0638_00010","10",32,0,5.78542,45.230284],
+["38229_0638_00012","12",32,0,5.78527,45.230202],
+["38229_0645_00001","1",33,0,5.794061,45.22417],
+["38229_0645_00003","3",33,0,5.794375,45.224324],
+["38229_0645_00005","5",33,0,5.794687,45.224648],
+["38229_0645_00006","6",33,0,5.795017,45.224653],
+["38229_0645_00007","7",33,0,5.794861,45.224821],
+["38229_0645_00009","9",33,0,5.794972,45.224901],
+["38229_0647_00001","1",34,0,5.783754,45.224844],
+["38229_0647_00002","2",34,0,5.783626,45.224452],
+["38229_0647_00003","3",34,0,5.783533,45.224118],
+["38229_0647_00004","4",34,0,5.78357,45.223948],
+["38229_0647_00005","5",34,0,5.783869,45.223981],
+["38229_0647_00006","6",34,0,5.784092,45.224167],
+["38229_0647_00007","7",34,0,5.784014,45.224189],
+["38229_0647_00008","8",34,0,5.783842,45.22471],
+["38229_0670_00001","1",35,0,5.789775,45.221795],
+["38229_0670_00001_bis","1 bis",35,0,5.789913,45.221624],
+["38229_0670_00003","3",35,0,5.789362,45.222107],
+["38229_0670_00005","5",35,0,5.788983,45.221955],
+["38229_0670_00006","6",35,0,5.789397,45.222249],
+["38229_0670_00007","7",35,0,5.788648,45.221795],
+["38229_0670_00008","8",35,0,5.788943,45.222057],
+["38229_0670_00008_bis","8 bis",35,0,5.788867,45.222021],
+["38229_0670_00009","9",35,0,5.788145,45.221578],
+["38229_0670_00010","10",35,0,5.787688,45.22189],
+["38229_0670_00010_bis","10 bis",35,0,5.787631,45.221919],
+["38229_0670_00011","11",35,0,5.788068,45.221554],
+["38229_0670_00012","12",35,0,5.787528,45.222291],
+["38229_0670_00012_bis","12 bis",35,0,5.787993,45.222474],
+["38229_0670_00012_ter","12 ter",35,0,5.788301,45.222578],
+["38229_0670_00013","13",35,0,5.78794,45.221522],
+["38229_0670_00014","14",35,0,5.787293,45.222708],
+["38229_0670_00014_bis","14 bis",35,0,5.787846,45.222851],
+["38229_0670_00016","16",35,0,5.787337,45.222821],
+["38229_0670_00018","18",35,0,5.786893,45.223286],
+["38229_0670_00018_bis","18 bis",35,0,5.786981,45.223209],
+["38229_0670_00019","19",35,0,5.787452,45.221992],
+["38229_0670_00019_bis","19 bis",35,0,5.78722,45.222679],
+["38229_0670_00021","21",35,0,5.78719,45.222792],
+["38229_0670_00021_bis","21 bis",35,0,5.787118,45.222863],
+["38229_0670_00022","22",35,0,5.786599,45.223612],
+["38229_0670_00023","23",35,0,5.786369,45.223629],
+["38229_0670_00023_bis","23 bis",35,0,5.785795,45.224333],
+["38229_0670_00024","24",35,0,5.786101,45.223959],
+["38229_0670_00025","25",35,0,5.784605,45.224897],
+["38229_0670_00025_bis","25 bis",35,0,5.784919,45.22503],
+["38229_0670_00026","26",35,0,5.785922,45.224534],
+["38229_0670_00027","27",35,0,5.785948,45.224848],
+["38229_0670_00028","28",35,0,5.786837,45.224913],
+["38229_0670_00028_bis","28 bis",35,0,5.787277,45.225151],
+["38229_0670_00029","29",35,0,5.785624,45.225554],
+["38229_0670_00029_bis","29 bis",35,0,5.785545,45.225569],
+["38229_0670_00030","30",35,0,5.786024,45.224753],
+["38229_0670_00031","31",35,0,5.78553,45.225602],
+["38229_0670_00032","32",35,0,5.786282,45.225191],
+["38229_0670_00033","33",35,0,5.784435,45.225818],
+["38229_0670_00034","34",35,0,5.785092,45.225783],
+["38229_0670_00035","35",35,0,5.783886,45.226211],
+["38229_0670_00037","37",35,0,5.783478,45.226519],
+["38229_0670_00038","38",35,0,5.783334,45.226654],
+["38229_0670_00039","39",35,0,5.78258,45.226249],
+["38229_0670_00040","40",35,0,5.783825,45.226895],
+["38229_0670_00040_bis","40 bis",35,0,5.78333,45.226792],
+["38229_0670_00041","41",35,0,5.78216,45.225939],
+["38229_0670_00042","42",35,0,5.782557,45.226338],
+["38229_0670_00044","44",35,0,5.784377,45.227965],
+["38229_0670_00044_bis","44 bis",35,0,5.783569,45.227641],
+["38229_0670_00044_ter","44 ter",35,0,5.783488,45.227486],
+["38229_0670_00045","45",35,0,5.782283,45.226663],
+["38229_0670_00046","46",35,0,5.784387,45.228335],
+["38229_0670_00047","47",35,0,5.782017,45.227194],
+["38229_0670_00048","48",35,0,5.781984,45.227277],
+["38229_0670_00050_a","50 a",35,0,5.78077,45.227625],
+["38229_0670_00050_b","50 b",35,0,5.780631,45.227637],
+["38229_0670_00052","52",35,0,5.777217,45.227682],
+["38229_0670_00053","53",35,0,5.780121,45.227532],
+["38229_0670_00057","57",35,0,5.779457,45.227529],
+["38229_0672_00001","1",36,0,5.785684,45.226512],
+["38229_0672_00002","2",36,0,5.784554,45.225984],
+["38229_0672_00003","3",36,0,5.785424,45.227707],
+["38229_0672_00004","4",36,0,5.785788,45.226765],
+["38229_0672_00005","5",36,0,5.785408,45.22775],
+["38229_0672_00006","6",36,0,5.785305,45.226926],
+["38229_0672_00007","7",36,0,5.785302,45.227745],
+["38229_0672_00008","8",36,0,5.784885,45.22753],
+["38229_0672_00009","9",36,0,5.785049,45.22769],
+["38229_0672_00010","10",36,0,5.785019,45.227162],
+["38229_0672_00011","11",36,0,5.784733,45.227563],
+["38229_0672_00012","12",36,0,5.784702,45.227215],
+["38229_0773_00002","2",37,0,5.791556,45.226484],
+["38229_0773_00004","4",37,0,5.791846,45.226653],
+["38229_0773_00006","6",37,0,5.791948,45.226719],
+["38229_0773_00008","8",37,0,5.792377,45.226912],
+["38229_0773_00010","10",37,0,5.79246,45.226978],
+["38229_0773_00012","12",37,0,5.792703,45.227113],
+["38229_0773_00014","14",37,0,5.792763,45.227161],
+["38229_0773_00014_bis","14 bis",37,0,5.793415,45.227521],
+["38229_0773_00016","16",37,0,5.792682,45.227185],
+["38229_0810_00020","20",38,0,5.779065,45.223766],
+["38229_0810_00022","22",38,0,5.779431,45.224342],
+["38229_0810_00024","24",38,0,5.779019,45.224262],
+["38229_0810_00026","26",38,0,5.778897,45.224476],
+["38229_0810_00027","27",38,0,5.778199,45.223399],
+["38229_0810_00027_bis","27 bis",38,0,5.777877,45.223332],
+["38229_0810_00028","28",38,0,5.77883,45.22466],
+["38229_0810_00028_bis","28 bis",38,0,5.778729,45.224804],
+["38229_0810_00029","29",38,0,5.778321,45.22377],
+["38229_0810_00030","30",38,0,5.778541,45.225118],
+["38229_0810_00031","31",38,0,5.77901,45.22349],
+["38229_0810_00031_bis","31 bis",38,0,5.778963,45.223772],
+["38229_0810_00032","32",38,0,5.778447,45.225134],
+["38229_0810_00033","33",38,0,5.778852,45.224155],
+["38229_0810_00034","34",38,0,5.778568,45.225237],
+["38229_0810_00035","35",38,0,5.778741,45.224619],
+["38229_0810_00036","36",38,0,5.777855,45.225357],
+["38229_0810_00037","37",38,0,5.778492,45.224918],
+["38229_0810_00038","38",38,0,5.778435,45.225225],
+["38229_0810_00040","40",38,0,5.778303,45.225156],
+["38229_0810_00042","42",38,0,5.778146,45.225236],
+["38229_0810_00044","44",38,0,5.777867,45.225362],
+["38229_0810_00046","46",38,0,5.777963,45.225492],
+["38229_0810_00048","48",38,0,5.777267,45.225722],
+["38229_0810_00050","50",38,0,5.777332,45.226193],
+["38229_0810_00052","52",38,0,5.77799,45.226519],
+["38229_0810_00054","54",38,0,5.777984,45.226603],
+["38229_0810_00056","56",38,0,5.778037,45.226574],
+["38229_0810_00058","58",38,0,5.776454,45.226314],
+["38229_0820_00001","1",39,0,5.782118,45.22282],
+["38229_0820_00005","5",39,0,5.782723,45.222412],
+["38229_0820_00007","7",39,0,5.78305,45.222196]
+],
+"roadBase":[5.7,45.18,100000],
+"roads":[
+[1,"Chemin du Labyrinthe","8034,4369,-17,5,-13,7,-48,-12,-51,-13"],
+[0,"","6552,5541,6,-1,4,-2,4,-2,1,-3,-4,-3,-4,-6,-6,-3,-6,-2,-8,-3,-8,-6,-17,-5,-6,-1,-3,1,-3,2,-5,3,-4,1,-4,1,-3,-2,-6,-2,-6,-1,-4,0,-4,1,-3,0,-6,1,0,1,9,2,4,3,2,3,3,-1,8,-2,3,-5"],
+[1,"Chemin de Beauséjour","9573,4052,8,-7,41,-38,5,-4,8,-9,5,-7,15,-26,8,-13,1,-2,4,-8,10,-16,14,-24,2,-4,19,-40,11,-14,17,-20,21,-27"],
+[2,"Allée de la Praly","9043,4080,-1,13,2,10,1,10,-2,3,-1,2,-3,3,-2,2"],
+[0,"Saint-James Park","9167,3877,-8,-2,-14,-4,-5,-10"],
+[2,"Allée de la Praly","9026,4116,1,-3,2,-3,1,-3,2,-6,3,-9,3,-7,5,-5"],
+[0,"","6639,5541,-11,6,-6,-1,-5,2"],
+[1,"Allée des Érables","8129,4746,-7,-9,-28,-10,-24,-8,-33,-15,-31,-3,-42,-1,-23,-5,-25,-12,-8,-14"],
+[1,"Chemin de la Croix des Rameaux","8054,4470,-14,17,-14,32,13,25,1,17,0,1"],
+[1,"Chemin de Clos Buisson","7859,4491,4,2,35,17,32,17,30,15,7,3,17,3,56,14,5,1,7,2"],
+[1,"Rue du Saint-Eynard","8728,3965,-1,3,0,2,-1,8,-5,13,-3,5,-21,43,-13,37,2,16,4,15,16,25,-13,19,-16,-5,-15,7,-17,34"],
+[1,"Allée de Bérivière","8341,3817,30,5,26,5,74,14,34,9,69,13,86,17"],
+[1,"Allée des Fleurs","8625,3944,0,-5,18,-31,17,-28,4,-7,2,-2,2,-3"],
+[1,"Allée de la Grande Vigne","8519,4004,-67,-10,-10,0,-5,3,-3,9,-4,9,-8,2,-12,-2,-11,-1,-6,0,0,4,-3,10,-7,17"],
+[1,"Allée du Grand Champ","8500,4037,32,11,47,20,4,10,1,16,8,1,4,6,-3,4,-8,2,-8,-4,1,-7,6,-2"],
+[1,"Allée de Jallières","8993,4166,20,11,34,22,34,21,-26,25"],
+[1,"Avenue du Bourcet","7624,3708,-3,4,-11,15,-15,25,-4,21,7,33,3,19,5,26,25,35,38,52,5,7,4,4,16,17,21,15,22,11,27,8,34,8,32,4,13,3,5,1,3,0"],
+[1,"Rue du Pal de Fer","7720,3866,9,-1,15,6,8,3,1,4"],
+[1,"Rue du Pal de Fer","7753,3878,-5,1,-22,-8,-6,-5"],
+[1,"Rue du Champlars","7995,4021,2,-10,27,-65,27,-60,0,-9,6,-7,4,-8"],
+[1,"Chemin des Buisses","8289,4228,9,10,10,8,17,3,20,-8,18,2,21,16,31,24,21,14,38,22,23,10,25,8,13,10,22,32,8,22,16,18,7,4"],
+[1,"Allée du Clos de la Ville","8384,4259,-2,6,-5,13,-15,15,-45,27"],
+[1,"Allée de la Queyrassine","8356,4510,11,-7,12,-8,3,-11,-4,-19,-9,-24,-6,-18,-4,-10,-3,-12,5,-4,9,0,17,8,1,7,-9,4,-16,7"],
+[1,"","8356,4510,-13,4,-10,9,-2,10,-9,21,-9,1,-17,-6,-2,-6,23,-14,16,-6"],
+[1,"","8097,4420,2,2,36,18,61,35,32,18"],
+[1,"Chemin de la Croix des Rameaux","8054,4470,5,4,7,6,21,18,12,2,37,-1,13,2,10,3,27,16"],
+[1,"Chemin de la Croix des Rameaux","8087,4498,6,11,2,9,-1,12"],
+[1,"Allée de la Passée","9377,3854,12,9,14,7,4,8,-2,11,-15,19,-9,-2,-38,-11,-24,-9,-12,18"],
+[1,"Allée du Gaillet","9222,3948,8,-6,9,-4,27,-7,33,10,58,17"],
+[1,"Allée du Gaillet","9217,3955,1,6,3,11,7,11,15,7,31,8,29,10,-13,26"],
+[1,"Allée des Vulpains","9086,4013,39,12,2,1,5,2,32,11,11,18,6,10,8,12,-6,10,-11,19,-7,9,-14,4,-18,-5,-7,-2,-1,-10"],
+[2,"Chemin Saint-Bruno","7441,3983,-8,5,-11,2,-10,0,-23,-9,-14,-4,-13,-4,-25,-6,-28,-8,-27,-6,-21,-3,-26,-5,-27,-14,-25,-7,-36,0,-22,-2,-33,-2,-25,-5,-17,-4,-26,-7,-24,-6,-26,-5,-21,-2,-10,-1,-7,-1,-16,0,-20,-1,-7,1,-9,1,-8,3,-10,6,-9,4,-9,3,-17,4,-16,3,-4,3,0,3,0,3,3,3,6,2,12,0,10,1,15,3,6,2,12,4,15,9,21,10,17,9,6,4,3,4,5,9,3,12,1,7,-1,6,-2,5,-4,3,-8,2,-44,-1"],
+[1,"Chemin du Belvédère","6345,3996,6,-13,3,-9,0,-6,-13,-36,-2,-9,-1,-3,1,-3,3,-3,5,-1,5,0,5,2,23,11,40,20,4,0,4,-1,6,-2,3,-6,-2,-4,-24,-30,-15,-16,-13,-11"],
+[1,"Chemin Saint-Germain","6932,4066,-19,-11,-37,-27,-23,-6,-16,-4,-5,-2,-4,-4"],
+[1,"Clos Saint-Germain","6939,4015,7,6,7,6,16,7,14,3,15,2,13,0,21,-1,46,-3,25,-1,33,6,24,4,16,3"],
+[1,"Chemin Saint-Bruno","7024,3904,17,17,27,24,17,9,25,12,24,-2,54,8,22,5,12,4"],
+[1,"Avenue de la Foy","7351,3613,-5,45,-10,125,-5,22,-13,30,-12,10,-16,1,-38,-4"],
+[1,"","6651,4175,-16,12"],
+[1,"","6681,4188,-11,24"],
+[2,"Chemin de l'Église","8465,4576,-2,-5,-5,-4,-8,-5,-35,-21,-48,-23,-11,-8,-17,-15,-23,-20,-27,-16,-41,-23,-33,-24,-24,-24,-13,-13,-9,-12,5,-9,16,-24,9,-16,6,-33,-10,-13,-20,-17,-20,-11,-15,-9,-4,-31,-4,-11,-6,-12,-17,-31,-5,-19,-5,-19,0,-9,0,-23,-8,-14,-2,-4,-3,-4,-8,-9,-8,-3,-31,-9,-33,-9,-11,-3,-7,-1,-23,-5,-40,-10,-15,-9,-16,-14,-18,-7,3,-27,4,-23,9,-16,5,-11,4,-11,8,-31,2,-7,1,-4,1,-5,2,-9,2,-5,1,-4,1,-4,0,-11,0,-5,-1,-6"],
+[2,"Chemin de la Ville","8561,3932,-42,72,-19,33,-28,36,-2,3,-5,5,-11,13,-46,39,-19,16,-51,41,-49,38,-43,26,-41,27"],
+[0,"Chemin des Capucins","7810,4164,7,-4,7,-3,39,4,11,2,22,5,39,9,38,8,72,16,55,13,22,9,18,8"],
+[1,"Chemin de la Chicane","9401,4357,-4,6,-29,35,-65,67,-55,49,-28,24,-94,83,-5,5,-7,7"],
+[1,"Chemin du Boutet","8431,4829,2,4,1,3,1,10,0,10"],
+[1,"Chemin de Saint-Hugues","9007,5160,9,9,13,13,12,8,28,16,25,24,23,24,14,13,17,15,10,10,9,14,15,26,7,8,9,9,25,16"],
+[1,"Clos Vincent","9777,5200,-25,-21,36,-34,2,-2"],
+[1,"Allée de Pont Croissant","9572,4771,3,1,3,1,87,39,105,44,38,16,141,60,11,4"],
+[1,"Chemin des Arriots","9688,4539,-1,7,0,6,1,13,12,42,-1,14"],
+[1,"Lotissement de Pont Croissant","9572,4508,-3,24,103,5,6,1,10,1"],
+[1,"Allée des Lauriers","9654,4675,4,2,50,21,79,34,53,27,3,2"],
+[1,"Chemin de Plate Rousset","9888,5242,-53,20,-55,50,-2,2,-39,36,-30,13,-29,7,-12,4,-37,17,-7,2,-59,11,-14,12,-16,13,-10,17,-4,10,-5,14,-18,25,-6,10,-29,47"],
+[1,"Allée de Pré Fleuri","9368,4398,26,6,77,36,4,19,8,12"],
+[1,"Allée des Contamines","9303,4465,153,77"],
+[1,"Impasse de Belledonne","9220,4538,39,19,5,28,102,53,52,27"],
+[1,"","9126,4621,-2,-1,-41,-21,-28,-14,-5,-3,-12,-6"],
+[1,"Allée de la Treille","9121,4626,27,23,25,13,106,59"],
+[1,"Allée des Florentines","9039,4707,48,36,6,3,6,1,16,1,20,2,20,2,21,6,10,5,6,5,3,5,1,4,2,6,0,4,-1,6,-2,4,-3,5,-6,5"],
+[1,"Allée des Florentines","9176,4758,12,-15,-1,-8,-12,-14"],
+[1,"Allée des Florentines","9197,4793,26,5,8,0,8,0,5,-2,6,-2,20,-14"],
+[1,"Allée des Florentines","9186,4807,7,4,7,3,3,3,3,4,2,4,3,4,1,3,0,4,-1,3,-3,3,-18,17"],
+[1,"Allée des Florentines","9186,4807,-55,-8"],
+[1,"Allée des Étreires","9063,4681,-164,-76"],
+[1,"Impasse Bellevue","8993,4745,-180,-85"],
+[2,"Chemin de l'Église","8905,4825,-36,-18,-26,-18,-27,-26,-52,-74,-12,-6"],
+[1,"Chemin de Jallières","8909,4441,-51,77,-3,3,-3,6,-28,42,-12,18,-18,24,-52,55,-6,7"],
+[0,"","9695,5088,43,-53"],
+[1,"Pre Borel","9780,5312,44,20,21,-14,17,9"],
+[1,"Pre Borel","9824,5332,-20,25,3,23,15,18"],
+[1,"Chemin de Puits Guiguet","9680,5370,10,67,32,39,56,35,31,18,27,-2,19,-2,54,7,56,-6"],
+[0,"Pas Guiguet","7677,6045,-27,-9,-28,-17,-30,-23,-27,-19,-12,-7,-13,-6,-15,-9,-12,-9,-8,-8,-6,-5,-4,1,-6,-3,-12,-4,-13,-6,-17,-11,-19,-9,-19,-14,-18,-10,-14,-8,-11,-8,-11,-6,-16,-10,-15,-13,-15,-7,-18,-9,-21,-8,-3,1,-15,-5,-12,-4,-13,-4,-11,-4,-15,-6,-3,0,-3,4"],
+[1,"","9255,4274,13,3,9,1,10,2,7,4"],
+[2,"","9340,4327,23,12,9,4,8,4,7,3,14,7"],
+[1,"Chemin Saint-Martin","9294,4284,-7,5,-5,5"],
+[2,"","8798,3976,7,6,11,10,13,11,38,26,17,11,17,12,20,11,20,11"],
+[2,"Avenue de Chartreuse","8120,3814,63,21,81,26,20,7,10,3,14,5,50,15,130,26,73,15,36,7,5,1,8,1,4,1,7,2,4,0"],
+[0,"Chemin de Chaboudière","10032,6314,-28,4,-55,-1,-13,2,-12,4,-41,15,-23,2,-22,5,-65,19,-11,7,-16,20"],
+[0,"Chemin des Malencharets","9606,6418,-3,11,0,15,11,17,6,12,0,9,-4,9,-7,8,-7,13,-11,20"],
+[1,"Chemin de la Buisse","9658,5694,-10,5,-49,25,25,23,29,27,16,10,11,4,14,5,10,6,2,6,-1,8,-5,9,-6,12"],
+[1,"Chemin de la Buisse","9599,5724,-7,4,-5,5,-14,12,-7,8,-3,8,-2,9,-4,16,-5,15,0,6,1,6,10,26,2,11,1,13,1,26,-2,5,-3,5"],
+[0,"Chemin de Mont Garin","9098,6101,9,-5,12,-2,15,1,11,-2,14,-1,8,3,9,0,5,-3,-2,-8,-6,-9,-6,-11,-4,-10,17,-11,21,-20,28,-11,8,-5,17,-11,25,-6,38,20,57,9,24,1,48,-12,33,-13"],
+[0,"","9479,5995,-29,62,-1,19,-4,7,-14,11"],
+[0,"","9431,6094,-7,5,-4,4"],
+[0,"","9300,6214,-12,8,-11,10,-17,15,-19,17,-15,27,-17,21,-19,13,-16,26,-15,27,-14,12,-27,42"],
+[1,"Chemin de l'Église","9463,5552,-2,5,0,4,5,10,21,18,11,8,12,5,15,4,29,7,43,10,9,3,8,6,23,24,3,3,6,14,12,21,14,10,16,11,52,36,54,36,39,25,32,23,28,22,12,6,11,3,23,4,31,4,26,0,15,-2,17,-4,7,0,4,-1"],
+[1,"Chemin de Billerey","9463,5552,-5,-2,-9,-5,-11,-7,-7,-1,-6,-1,-51,1"],
+[1,"Chemin de Billerey","9248,5604,71,38,2,3,1,3,-1,5,-5,11,-35,30,-20,14"],
+[0,"","9316,5664,34,36,11,8,23,9,20,6"],
+[0,"","9551,5416,-51,-34"],
+[0,"","9492,5505,79,28"],
+[0,"","9498,5495,-44,-27"],
+[0,"","9458,4936,-16,-7,-107,-28,-4,5,-2,2"],
+[1,"Allée du Grand Duc","9635,3994,-26,-6,-29,-41,-8,-2,-60,-20"],
+[1,"Allée des Clématites","9667,4090,-3,3,-3,3,-7,9,-14,15,-6,3,-18,7,-13,19,0,5,1,8,7,8,20,13,18,8"],
+[1,"Allée des Clématites","9616,4130,-24,-8,-29,-12"],
+[1,"Allée du Chateauvieux","9727,4088,-1,-5,2,-6,39,-21,87,-50,11,-5,21,-3,15,4,46,34"],
+[2,"Rue du Général de Gaulle","9539,4420,23,5,116,31,20,5,17,4"],
+[1,"Chemin des Arriots","9699,4621,-5,8,-15,17,-12,14,-13,15,-14,18,-7,6,-22,25,-17,20,-9,11,-6,7,-7,9,-10,13,-28,37,-8,14,-3,4,-17,25,-15,22,-21,31,-2,2"],
+[0,"Chemin de Pierrache","6957,4689,9,-1,5,-1,6,-2,5,-2,5,-3,4,-3,16,-12,7,-6,5,-5,2,-5,1,-5,0,-7,-1,-8,-3,-6,-6,-7,-7,-6,-9,-8,-7,-3,-8,-2,-11,-1,-9,1"],
+[0,"Chemin Louis Peyrard","6373,4755,10,-5,15,-7,25,-10,15,-6,9,-8,18,-18,9,-21,-4,-41"],
+[1,"","7039,4542,28,4,13,2,13,3,31,6,34,6,7,4,8,13,10,17,5,9,3,4,3,1,5,-1,5,-5,4,-8,6,-16,3,-10,4,-10,4,-7,4,-3,6,-2"],
+[0,"","6991,4677,44,-16,17,-7,40,0,23,0,14,5,29,19,48,12"],
+[0,"Chemin des Jaux","6412,4517,17,-5"],
+[1,"Chemin des Villauds","7905,4356,1,-4,0,-30,1,-5,0,-4,-2,-2,-24,-10,-22,-8,-11,-4,-6,-8,-5,-21,-6,-33,-2,-7,-5,-35,-1,-10,-3,-4,-3,-3,-7,-4,-17,-10,-8,-9,-6,-7,-7,-14,3,-18,12,-15,17,-16,22,-15,25,-44,4,-6,21,-35"],
+[1,"Rue du Champlars","8057,3870,0,9,-6,7"],
+[1,"Allée de l'Enclos","7851,4016,24,11,5,2,21,7,33,8,24,11,12,8,6,6,1,4,0,28,-1,21,17,22,51,11"],
+[0,"Allée des Ormes","7787,4091,-41,-17,-27,11,-81,-28,-6,-19"],
+[1,"Chemin de Malacare","7786,4210,-2,0,-33,-5,-20,-4,-15,-4,-58,-34,-70,-39,-77,-39,-6,-1,-5,0,-7,1,-5,3,-20,16,-9,7,-6,3,-6,1,-14,1"],
+[0,"Allée Saint-Bruno","7433,4116,-9,-10,-6,-9,-2,-9,3,-8,32,-39"],
+[0,"Chemin du Bruchet","7735,4551,-2,-13,1,-12,3,-11,2,-8,2,-7,3,-7,2,-5,0,-3,1,-1,-1,-2,-1,-2,-11,-10,-11,-10,-7,-6,-16,-14"],
+[0,"Chemin Saint-Germain","7271,4206,17,-22,69,-49,15,-9,9,-3,9,-3,13,-3,14,-2,9,-1,7,2"],
+[1,"Chemin des Villauds","7905,4356,-3,19,-6,19,-9,25,-1,10,-1,16,-2,10,-5,9,-7,10,-12,17,-5,4,-6,3,-15,11,-17,9,-12,6,-11,4,-4,2,-54,21"],
+[0,"Chemin des Villauds","7642,4630,-5,2,-10,4,-12,6,-11,4,-14,6,-15,5,-7,2,-6,3,-5,2,-4,2,-9,4,-8,4,-12,4,-9,2,-10,3,-8,3,-6,4,-7,5,-4,3"],
+[0,"","8186,4520,-1,5,1,6,3,6,5,5,8,6,12,8,16,7,58,20,71,23,29,-6,32,-6,3,3,4,1"],
+[0,"","7606,5275,-3,11,3,11,4,-8,4,11,3,-7,6,6,8,-6,9,-6,7,-5,4,-4"],
+[1,"Chemin de la Batie","8757,4897,4,-6,22,-31,4,-5,12,-7"],
+[1,"Chemin du Miraillet","7881,4781,3,-2,4,-2,9,-2,9,-3,10,-1,11,0,14,1,7,6,10,6,63,15,63,13"],
+[1,"Chemin du Miraillet","8328,4815,3,-3,2,-2,1,-3,0,-3,-2,-3,-14,-12,-7,-5,-1,-10"],
+[1,"Chemin des Prairies","6462,4296,-69,-29,-46,-23,-46,-22,-90,-28"],
+[0,"Chemin des Jaux","6429,4512,11,-4,8,-4,25,-23,4,-4,4,-6,-2,-9,-16,-37,-2,-8,-2,-8,-1,-24,0,-1"],
+[1,"Chemin des Prunelles","6483,4245,8,-3,12,-2,9,-1,12,-1,8,0,11,1,13,4,7,3,19,10,31,20,32,18,37,19,9,0,9,-4,9,-6,8,-3,25,11,5,0,27,-20"],
+[1,"Chemin des Tilleuls","6467,4188,-41,-16,-5,-2,-3,-4,-1,-4,-2,-3,-5,-4,-57,-19,-44,-15,-9,-7,-3,-2"],
+[0,"","6981,4535,-5,2,-10,9,-4,17,0,17,-1,17"],
+[1,"Chemin des Rieux","9787,5139,33,-35,30,-36,24,-28,32,-38,14,-15"],
+[1,"Lotissement le Clos du Chapelier","9679,4646,-46,-15,-61,-27"],
+[0,"","9648,5699,4,3"],
+[0,"","9681,5720,7,-5"],
+[1,"Lotissement Plein Soleil","9976,4212,-3,4,-20,25,-35,51,-11,8,-8,1,-6,1,-6,-3,-129,-58"],
+[1,"Allée de la Matinière","9664,3946,53,28,-3,34,15,11"],
+[0,"","9729,4019,5,13,33,24"],
+[1,"Allée des Tonnelles","9692,3898,13,6,22,2,50,-9,39,24,-38,44"],
+[1,"","9705,3904,18,18"],
+[1,"Chemin de l'Hermitage","8867,4029,4,-3,5,-5,8,-25"],
+[0,"","8405,4614,-17,36,-5,18,-2,10,-2,12"],
+[1,"Chemin de la Cordelière","7881,4781,-6,28,-2,8,-3,6,0,1,-5,5,-12,8,-26,18"],
+[1,"Chemin de la Cordelière","7875,4809,6,7,3,4,4,3,11,8,13,7,27,15,27,14,28,13,6,2,8,2,8,0,8,-2,9,-3,8,-2"],
+[1,"Chemin de la Batie","8303,5140,18,-11,31,-27,8,-8,13,-13,24,-32,1,0"],
+[0,"Chemin Piéton de la Martelière","8436,4826,6,-4,3,-4,1,-6,0,-6,-5,-21,-4,-19,-6,-12,-6,-9,-11,-9,-11,-7,-19,-19,-5,-10,0,-10"],
+[1,"Chemin de Montlivet","8795,5044,1,14,1,11,1,21,1,20,12,31,12,27,13,15,15,11,3,6,2,5,-5,4,-6,2,-11,-1,-18,-8,-48,-29,-17,-8,-8,-4,-21,-3,-20,2,-71,6,-107,9,-8,1,-13,2,-43,5,-12,-5,-39,-15,-59,-14,-47,-9"],
+[0,"","9488,3825,-30,57,-12,21,-9,19,-4,5,-9,4,-16,12,-21,25"],
+[1,"Allée des Moscaries","9595,3900,-2,-2,-63,-43"],
+[1,"Allée des Moscaries","9633,3890,12,-32,-4,-13,-22,-12,-26,-11,-11,-1"],
+[1,"","6542,3827,11,7,1,5,1,7,0,7,1,6,4,8,5,6,5,6,3,4,3,8,1,8,1,7,3,5,8,7,12,8,17,10,20,9,18,8,14,6,6,2,1,3,-4,1,-11,0"],
+[1,"Impasse des Arriots","9688,4539,13,3,6,2,44,19"],
+[0,"Chemin des Réservoirs","7734,5382,-2,-3,-1,-3,-6,-5,-8,-6,-10,-11"],
+[0,"","7678,5335,-2,-4,-9,-5,-3,-4,11,2,-2,-6,12,-1,-4,-3,7,-2,1,-3,3,0,2,2,5,0,2,-1,2,0,3,-2,5,-1,7,-1,3,-2,2,0,9,-6,2,-2,3,-1,5,0,4,-2,4,-6,6,-4,0,-4,5,-6,0,-1,1,-3,5,-5,1,-1,0,-2,-2,-7,1,-3,2,-2,7,-6,6,-6,19,-17,7,-9"],
+[0,"Chemin de la Batie","7825,5196,3,5,3,7,4,11,4,7,4,5,5,3,8,2,8,0,7,-1,7,-1,4,-2,14,-4,6,-2,7,-2,6,0,5,0,11,3,15,2,33,6,37,6,21,-1,24,-3,30,-3,31,-3,14,-1,17,3,17,1,9,-7,36,-30,35,-30"],
+[1,"","9619,4876,14,-18,-99,-37"],
+[1,"","9550,4669,83,30"],
+[1,"","9437,4806,89,29"],
+[1,"Chemin des Oiseaux","9770,4856,-100,104,3,4,39,18"],
+[1,"Allée Saint-Bruno","7453,4035,10,-16,11,-16,-5,-6,-7,-5,-9,-4,-12,-5"],
+[2,"Chemin de l'Église","9145,5014,-29,-18,-17,-10,-25,-17,-14,-8"],
+[1,"Chemin du Boutet","8924,5119,9,-13,3,-4,7,-10,2,-8,0,-13,-1,-14,-3,-17,-1,-9,1,-4,9,-7,13,-10,11,-8,1,-1,2,-4,2,-4,2,-7,-1,-15,-6,-20,-1,-15,0,-7,1,-8"],
+[0,"Chemin des Combes","8873,5037,-15,5,-15,5,-13,7"],
+[0,"Chemin de la Croix des Rameaux","8043,4676,0,2,-6,26"],
+[0,"","8706,4132,13,-4,36,14,30,12"],
+[0,"","7993,4144,-10,5,-1,5,-1,9,-2,8,-3,7,-3,6,0,1"],
+[0,"","7981,4069,4,-12,5,-11,7,-16"],
+[0,"","8328,4815,5,0,8,-1,8,-3,8,-1,6,1,6,1,7,2,9,4,7,1"],
+[1,"Chemin de la Cordeliere","7941,4772,41,-8,38,-8"],
+[0,"","8991,5250,-4,3,0,5,12,30,12,30,5,7,7,16,1,18,-4,13,-3,10,-7,12,-14,25,-42,-45,-8,3,-7,0,-9,2,-7,2,-4,2,-3,3,1,4,4,7,74,61"],
+[0,"","7747,4758,-2,3"],
+[0,"","7833,4774,-4,4,-3,3,-21,-1,-20,-1,-8,2,-8,4"],
+[0,"","7774,4814,-14,-1,-16,-2,-24,-3,-19,-3,-17,-2,-11,-2,-3,-3,-4,-6,1,-9,1,-8,7,-9,6,-6,14,1,8,1,17,3,12,2,29,6,4,2,3,5,1,5,5,6,12,5,18,6"],
+[0,"Allée du Grand Carré","8184,4981,57,45,62,33,57,35"],
+[0,"Chemin de la Batie","8471,4989,19,-13"],
+[1,"Chemin de la Batie","8490,4976,50,-37,37,-17,11,-6"],
+[1,"","8379,4690,-52,-15,-12,-9"],
+[0,"","6915,6062,13,6,1,5,2,4,0,8,-1,12,2,9,1,8,4,7,9,11,9,13,9,12,15,18,4,8,1,10,4,8,6,9,8,9,8,10,8,14,11,11,6,9,-3,16,13,17,5,8,7,7,5,7,5,7,11,14,6,11,9,13,8,8,10,14,-1,12,0,7,4,10,5,9,11,8,7,6,10,16,2,15,-5,26,-2,7,-3,5,-6,5,-7,5,-7,8,-5,7,-2,7,1,10,-1,6,-2,5,-19,25,-7,19,-6,13,-13,17,-21,24,-12,21,-10,28,-8,8,-24,23,-5,7,-25,36,-25,24,-40,42,-4,7"],
+[0,"","6880,6038,-8,-17,-8,-12,-8,-14,-6,-13,-2,-8,2,-7,1,-6,0,-4,-2,-5,-4,-7,-5,-5,-3,-6,-2,-7,-3,-7,-1,-6,-3,-4,-6,-3,-5,-4,-4,-4,-3,-4,-2,-3"],
+[0,"","6709,5629,-2,5,-4,4,-3,4,1,3,3,2,0,6,-3,8,-1,8,4,4,7,8,10,14,15,17,10,16,6,10,6,13,6,14,1,10,-2,14,1,11,3,8,4,8,6,8,2,3,0,3,-2,8,-1,6,1,5,4,5,7,8,7,8,5,6,4,6,4,10"],
+[0,"","6690,4898,8,5,7,0,3,-1,2,-3,2,-5,2,-3,6,1,5,5,6,3"],
+[0,"Chemin du Bourcet","7859,4293,-1,3,-24,37,-5,9,-5,3,-6,-2,-17,-5,-5,-1,-3,1,-2,2,0,3,1,1,18,5,5,1"],
+[0,"Chemin du Fort du Bourcet","7288,4504,-5,-2,-22,-13,-5,-3,-12,-5,-13,-1,-15,-1,-14,1,-13,1,-10,3,-8,4"],
+[0,"","8941,4074,-13,-1,-3,-2,-13,-7,-3,-3,-4,-3,-16,-9,-9,-6,-21,-13,-38,-27,-14,-12,-14,-13,-11,-10,-1,-2,-48,-39,-25,-22,-2,-1,-13,-9,-15,-12,-3,-5,-9,-7,-40,-34,-101,-82,-29,-26,-20,-14,-21,-12,-37,-13,-11,-4,-53,-19,-32,-16,-126,-73,-9,-6,-6,-4,-20,-11,-20,-12"],
+[0,"Chemin du Mont Pellet","9060,5623,-9,19,-8,15,-10,13,-4,7,-2,7,0,6,0,8,-4,10,-5,6,-4,6,-10,6,-9,2,-10,1,-17,4,-19,5,-5,2,0,4,1,2,5,6,8,6"],
+[1,"Allée des Genêts","8252,4069,143,58,13,6"],
+[1,"Allée de la Grande Vigne","8383,4045,61,23,26,8"],
+[1,"","8526,4124,-61,-43"],
+[1,"Allée de la Grande Vigne","8383,4045,-33,-12,-8,-2,-11,2,-9,4,-8,9,-3,2,-33,-8,-12,-3,14,-29,16,-18"],
+[0,"","8593,4105,6,5,14,13,18,-33,55,2"],
+[1,"Impasse des Buisses","8487,4285,-16,-12,-4,0,-31,24"],
+[0,"","6510,5552,16,0,22,0,10,0,10,-1,10,-3,7,-2,6,-2,6,0,5,2,3,2,2,2"],
+[0,"","6604,5531,-110,-25"],
+[0,"","6351,5489,-41,-2"],
+[0,"","6494,5506,-11,-2,-8,0,-33,3"],
+[0,"","6734,5588,-4,-1,-3,-2,-8,-2,-12,-4,-12,-4,-8,-2,-8,-2,-11,-3,-7,-3,-7,-4,-14,-5,-23,-8"],
+[0,"","9449,6146,-3,-4,-7,-6,-14,-12,-3,-9,-3,-10,1,-2"],
+[0,"","8988,5974,18,2,25,5,33,8,17,4,15,5,15,1,15,-3,-6,-6,0,-4,19,-11,20,-11,22,1,27,5,32,9,23,3,16,8"],
+[0,"Allée des Pervenches","8083,5005,10,1,10,4,18,11,14,14,3,13,-3,15,-5,11,1,13,10,10,32,8,130,35"],
+[0,"","9562,4425,10,-8,23,-13,19,-10,8,-10,2,-31,-43,1"],
+[0,"","9572,4417,-3,-5,-8,-7,-7,-5,8,-8,62,-39,19,-20,24,-17,10,-10,1,-4,10,-2"],
+[2,"Allée de la Praly","9043,4080,32,-49,6,-11,5,-7,3,-6,21,-36,13,-22,15,-23,5,-9,24,-40,13,-21,17,-25,21,-33,15,-26,6,-9,5,-7"],
+[2,"Chemin de Rochasson","7171,4488,11,-1,13,1,12,2,9,1,9,4,5,3,6,6,5,7,1,8,-2,10,-5,20,0,14,2,14,7,23,4,11,8,10"],
+[1,"","6422,4467,-15,-3,-26,-4,-46,-5,-25,-3,-23,-3,-17,-1,-11,-1,-12,1,-4,3,1,5,5,2,13,7,15,8,17,3,28,7,27,6,17,6"],
+[0,"","9918,6001,-5,3,-1,3,0,5,-1,2,-12,5,-23,13,-15,4,-33,9,-31,11,-31,15,-37,23,-20,12,-32,21,-14,12,-13,16,-29,26,-21,23,-5,6,-3,4,2,7,7,6,4,6,0,11"],
+[0,"Sentier de la Queyrassine","8605,4493,-18,7,-3,4,-10,14,-16,23,0,4,3,8,-3,14"],
+[1,"Allée de la Grande Vigne","8390,3977,-9,7,-6,25,18,5"],
+[0,"","8139,4069,-50,-11"],
+[1,"","8100,3950,-9,1,-17,39,1,5,6,8,4,13,2,14,-9,15"],
+[1,"","8234,4149,-90,-36,-22,-8,-12,-4,-11,-2"],
+[1,"","8100,4020,-13,10"],
+[1,"Clos Saint-Hubert","7054,4261,-11,-33,-6,-18,3,-15,12,-14,19,-13"],
+[1,"Allée de l'Enclos","8010,4074,-29,-5,-5,0"],
+[1,"Impasse de l'Ancienne Mairie","7799,3846,10,-13,45,18,11,0,12,-13,13,-5,19,-2,6,0"],
+[1,"","7972,4613,76,5,4,1"],
+[1,"Chemin de Bérivière","8387,3734,-32,57,-14,26,-31,55,-2,4"],
+[1,"Impasse de la Détourbe","9209,4353,64,-52,9,-7"],
+[1,"Chemin Louis Peyrard","6470,4639,-1,-14,8,-49,1,-6,4,-5,3,-5,5,-6"],
+[1,"Allée de la Résidence Saint-Mury","8758,3701,-9,16,-4,7,-1,2,-22,38,-24,41,-1,4,-18,36,-3,6,-2,4,-4,8,-2,5"],
+[0,"","9390,3908,45,14,2,0"],
+[1,"Chemin de l'Église","7959,3868,-50,-12"],
+[1,"","7928,3922,-36,-13"],
+[0,"","7693,4991,14,-17,14,-15,12,-14,7,-10,3,-8,2,-5,4,-5,10,-10,11,-7,6,-4,5,-4,14,-11,11,-9"],
+[1,"Chemin Saint-Germain","6887,4016,8,9,14,14,20,23,3,4"],
+[1,"Chemin Saint-Germain","6932,4066,52,23,39,20,23,13,7,8,5,8,4,10,3,8,1,0,4,10,1,2,16,36,14,18,28,24,13,6,28,14,12,3,18,4,20,2,17,-2,20,-11,7,-7"],
+[1,"Impasse de l'Église","8639,4693,53,-41"],
+[0,"","7832,4669,-47,-14,-15,-7,-14,-8,-29,-21,-15,-12,-4,-6,-5,-6"],
+[1,"Allée Rochebelle","8517,4758,-5,-21,0,-27,13,-14,47,-4,16,-7,-2,-11,-16,-20,-26,-23,-22,-13,-50,-21,-8,-8,-1,-11"],
+[0,"","7957,4757,-22,5,-25,5,-20,1,-17,0,-14,-1,-35,-3,-30,-2,-4,-4"],
+[0,"","7859,4767,4,9"],
+[0,"","8797,5069,9,-5,7,-5,7,0,7,0,2,-1"],
+[1,"Chemin de Rochasson","6955,4437,-7,-5,-6,-6,-4,-3,-6,-3,-6,-1,-6,-1,-7,-1,-6,1,-6,3,-5,4,-3,4,-3,6,2,5,2,4,16,13,8,7,0,3"],
+[1,"Chemin de Rochasson","7054,4472,0,7,0,4,-2,3,-2,2,-3,0,-3,0,-25,-11,-4,-1,-6,0,-4,0,-4,1,-4,2,-2,2,-5,3,-6,3,-3,0,-4,1,-4,0,-6,-3,-12,-4,-13,-4,-11,-3"],
+[1,"Allée des Orchidées","8611,4846,45,46,22,7,5,3,17,10,2,2,5,6"],
+[0,"","8026,4519,-8,7,-8,7,-22,12,-4,3"],
+[0,"","9141,5561,-2,-8,-1,-7,-1,-16,8,-12,8,-14,12,-20,12,-30,17,-39,17,-20,20,-14,8,-4"],
+[1,"Impasse du Boutet","9084,5076,3,9,6,12,0,3,-3,6,-9,16"],
+[0,"","9629,6260,-6,4,-7,5,-11,-3,-9,-1,-6,1,-4,3,-2,4,-1,7,7,16,4,10,0,4,-2,3,-5,4,-5,2,-7,1,-12,-10,-35,-21,-7,1,-1,6,12,23,2,9,0,3,-1,2,-2,3,-5,1,-6,-1,-9,-3,-21,-7,-4,5,-1,10,-1,17,-2,3,-3,1,-6,0,-17,-4,-4,-1,-7,0,-5,0,-4,4,-11,11,-11,10,-7,6,-4,5,-2,3"],
+[0,"Chemin Saint-Martin","9333,4102,8,3,22,23,27,10"],
+[1,"Allée de la Duchère","9561,4258,-8,-5,-27,-13,-13,-8,-2,-5,-61,-28,-3,-1,-75,25,-19,-5"],
+[1,"Rue Champ Charraud","9255,4184,30,20,69,3"],
+[1,"Allée de l'Obiou","9803,4077,-10,12,-13,5,-22,5"],
+[1,"Chemin des Côtes","9728,4156,-15,-10,27,-28"],
+[1,"Allée de la Cerisaie","9531,4013,14,-5,17,-25,65,20"],
+[1,"","8831,4442,17,-22,61,21"],
+[0,"","8852,4527,3,1,4,-5"],
+[0,"","8937,4573,3,12,10,6,9,6,10,3,49,6,5,-1,2,-3,-17,-19,0,-3,3,-2,5,0,19,5,8,0,7,-1"],
+[0,"","8946,4420,-11,-6"],
+[0,"","9038,4576,-5,-10,9,-13,7,-13,0,-5,-2,-4,-5,-3,-8,-2,-9,-1,-12,-4,-11,-3,-12,-4,-10,-6,-9,-7,-19,-27,-9,-14,-1,-6,6,-13,6,-9,0,-6,-8,-6"],
+[1,"Allée de Fontaine-Galante","8910,4659,119,56"],
+[2,"Chemin de l'Église","8752,4683,-12,-7"],
+[0,"","8844,4579,1,0,1,3,4,0,49,23"],
+[2,"Chemin de l'Église","8736,4673,-4,-2,-8,-4,-32,-15,-11,-1,-53,-20,-20,-3,-71,-15,-17,-7,-43,-20,-10,-6,-2,-4"],
+[0,"","8824,4569,3,1"],
+[0,"","8878,4531,38,0,8,0,17,1,6,1,8,1,8,3,75,39"],
+[1,"Allée de la Grande Vigne","8257,4053,9,-16"],
+[1,"Allée de la Résidence Saint-Mury","8697,3809,15,4,20,10,13,32,3,15,0,4,40,34,26,19,26,3,25,-3,6,-3,13,-8,23,-57,1,-3,8,-20,21,-53,7,-16,1,-12,-5,-14,-7,-9,-38,-14,-45,-9,-36,-8,-39,-2,-17,2"],
+[0,"","8885,4389,11,4,40,13"],
+[2,"Route de la Chartreuse","6826,4504,1,3,2,10,3,11,5,17,2,10,2,8,5,18,5,18,2,9,3,9,1,7,-1,6,0,6,-2,6,-3,8,-5,13,-2,6,-1,5,-2,8,1,5,2,6,5,8,1,3"],
+[1,"","9404,5723,57,29,100,18"],
+[0,"","8461,5231,5,-6,11,-8,6,-8,5,-11,5,-8,10,-12"],
+[0,"","8215,5197,9,4,9,4,8,4,35,20,14,5,15,5,13,2,12,0,14,0,18,-1,16,1,8,1,9,3,22,11,20,10,17,7,22,9,18,8,13,3,10,3,17,4,15,4,11,4,4,2,2,3,0,3,-3,5,-6,7,-1,3,1,4,4,3,7,4,11,5,14,7,9,5,8,6,5,4,3,1"],
+[0,"","8321,5649,4,-6,-6,-4,-13,1,-15,1,-10,-3,-2,-2,1,-3,3,-5,6,-3,5,-4,3,-5,-5,-6,-6,-6,-11,-6,-10,-8,-16,-11,-18,-10,-23,-15,-33,-20,-38,-24,-30,-16,-3,-3,-6,-9,-4,-10,-3,-11,-1,-10,2,-8,4,-6,11,-8,4,-4,2,-4,-12,-2,-11,-1,-12,-2,-11,-4,-15,-8,-13,-21,-12,-10,-20,-12,-17,-6,-12,-6,-9,-5,-17,-12,-7,-5,-17,-9,-34,-19,-13,-4,-27,-19"],
+[0,"","7838,5182,2,-1,5,-5,18,-10,10,-8,13,-12,8,-8,9,-6,11,-6,12,-4,3,-2,-1,-4,-5,-4,-5,-6,-4,-4,-3,-5"],
+[0,"","8517,5296,1,-5,-12,-13,-9,-10,-9,-11,-9,-9,-7,-6,-9,-4,-2,-7"],
+[0,"","8788,5061,-1,3,-2,4,-3,1,-7,1,-12,5,-9,4,-17,12,-12,9,-9,9,-8,6,-3,4,1,3,6,4,5,2,5,5,4,5,6,9,3,7,8,7"],
+[0,"","8361,5678,2,-3,10,-17,10,-16,5,-5"],
+[1,"Chemin de Montbivet","9804,6114,6,-3,6,-3,13,-9,19,-18,18,-17,12,-12,18,-10,13,-6,10,-6,11,-7,6,-5,4,-5"],
+[0,"","7651,5278,8,-6,1,-3,5,-23,3,-10,5,-8,-4,-8,-10,-8,-7,-10,-9,-16,-8,-15,-4,-8,-5,-7,-4,-11,-7,-5"],
+[0,"","9794,5787,-5,-14,-9,-34"],
+[0,"","9658,5694,15,-7,12,-4,1,-1,6,-2,6,-1"],
+[0,"Chemin des contrebandiers","7885,5610,10,3,12,5,25,7,14,3,6,1,14,3,12,4,9,5,6,4,4,1,10,1,10,-2,13,2,10,5,5,3,6,10,7,3,7,2,12,-1,6,1,6,1,12,7,3,1,6,5,7,1,14,3,18,9,6,3,7,1,7,1,5,0,4,3,3,1,35,0,4,6,-2,10,4,4,19,1,16,2,16,4,4,3,5,0,4,3,4,4,4,2,9,-1,7,1,1,4"],
+[1,"Chemin de Saint-Hugues","8924,5119,15,2,36,16,27,18,5,5"],
+[2,"Chemin de Rochasson","8405,4807,-13,-3,-21,-12,-21,-13,-19,-17,-23,-24,-16,-19,-27,-23,-18,-16,-12,-12,-11,-13,-26,-33,-4,-7,-3,-5,1,-6,6,-5,7,-3,12,1,10,4,14,12,16,15,16,13,12,10,12,7,10,5,8,3,8,-1,8,-1,14,-6,14,-11,46,-33,16,-12,6,-4,15,-10,21,-10,2,-2"],
+[2,"","9255,4274,16,12,11,8"],
+[2,"Chemin de Rochasson","8465,4576,10,-3,10,0,14,2,15,0,20,-3,24,-5,13,-2,29,0,21,2,22,3,7,0,6,-2,4,-5,1,-6,-6,-7,-10,-8,-13,-7,-14,-18,-11,-20,-2,-4,-13,-35,-6,-26,2,-9,23,-28,55,-51,20,-18,7,-8,31,-42,12,-17,14,-29,3,-25,10,-30,12,-16,10,-5,13,1,23,6,29,13,56,30,23,11,18,-1,6,-3"],
+[2,"","9401,4357,10,4,84,42,18,9"],
+[0,"","6328,3860,-4,3,-37,11,-52,6,-49,7,-43,6"],
+[0,"","5879,5345,10,0,12,2,9,2,49,2,27,-2,48,-10,34,-3,27,3,20,2,25,1,17,0,16,1,17,1,39,6,51,9,25,6,16,5,58,26,87,27,46,22,24,11,19,10,30,14,19,8,21,7,13,9,5,0,10,1,9,4,8,8,35,9,100,22,24,9,24,11,22,3,22,3,17,5,21,8,48,17,38,17,30,10,12,9,18,13,16,6,15,6,29,19,22,16,23,6,15,15,18,11,8,8,7,4,10,10,11,8,10,6,15,9,8,9,8,7,9,9,10,11,8,8,18,9,24,9,26,14,31,18,28,18,24,17,43,23,28,15,30,16,22,19"],
+[1,"Allée des Marronniers","7475,3894,184,46,6,-1,4,-1"],
+[0,"","9572,3945,4,-4,17,-15,0,-24,0,-4"],
+[0,"","9450,4199,11,-2,48,-15,47,23"],
+[1,"","8863,4738,92,41"],
+[1,"Allée de Château Corbeau","8471,4989,-8,-4,-10,-5,-19,-1,-6,0,-16,-2,-20,-4,-24,-4,-7,-2,-10,-3,-22,-7"],
+[1,"Allée de Château Corbeau","8361,4967,-5,8,10,12,10,16"],
+[1,"Allée du Pré Catlan","8471,4989,24,12,14,3,20,9,23,13,33,15,24,13,7,4,44,21,13,0,37,-3,21,-3,27,-5,30,-7,8,-3"],
+[0,"","7809,5429,6,-5,1,-4,5,-3,2,-4,3,-4,1,-4,4,-3,0,-6,3,-3,1,-5,3,-4,2,-7,3,-3,1,-6,3,-4,1,-5,4,-7,5,-12,3,-6,1,-4,3,-4,2,-5,6,-8,2,-4,3,-4,1,-5,3,-5,12,-16,9,-8,25,-22,19,-20,1,-4,-2,-4"],
+[0,"","7438,5060,24,6,18,3,30,0,27,-3,18,-4,47,-23,13,-6,35,-15,22,-13,21,-13"],
+[0,"","9530,3855,5,-12,38,-22,9,0"],
+[1,"Allée des Vulpains","9224,4054,-43,13"],
+[0,"","9288,4039,-17,-2,-40,12,-7,5"],
+[0,"","9093,4119,0,5,-11,11"],
+[0,"","8962,4056,11,-11,3,-3,6,-3,16,-7,3,-1,1,-1,22,-9,10,-2,6,1,16,5,9,3,10,3"],
+[0,"Allée des Vulpains","9093,4119,5,0,4,-3,24,-2"],
+[1,"Chemin de l'Hermitage","8884,3996,23,-61,42,-107,43,-102"],
+[0,"","9498,3835,32,20"],
+[0,"Allée Saint-Bruno","7451,4041,2,-6"],
+[2,"","8719,3907,-11,-6,-17,-14,-14,-11,-9,-8,-40,-32,-43,-37,-5,-7"],
+[2,"","8580,3792,10,6,17,11,28,23,12,11,23,20,13,10,29,25,7,9"],
+[2,"","8719,3907,65,56,3,3,11,10"],
+[2,"Chemin de Rochasson","9014,4137,1,-5,3,-5,2,-2,3,-5,3,-4"],
+[2,"","9037,4123,4,3,7,4,11,8"],
+[2,"","9059,4138,26,14,30,19,16,10"],
+[2,"","9023,4120,-21,-11,-29,-17,-19,-12"],
+[2,"Chemin de Rochasson","9032,4126,-5,3,-6,5,-7,3"],
+[0,"Sentier des Crêtes","8477,6792,-18,-9,-23,-11,-8,-4,-15,-11,-8,-8,-3,-8,0,-11,2,-13,2,-3,3,-10,-2,-6,0,-6,-4,-11,0,-4,0,-6,1,-11,-2,-7,-3,-5,-8,-13,-8,-10,-7,-8,-8,-10,-5,-6,-6,-6,-11,-9,-11,-7,-17,-8,-23,-12,-12,-8,-9,-7,-7,-9,-9,-7,-28,-16,-28,-12,-26,-13,-23,-12,-23,-13,-28,-15,-19,-11,-16,-9,-11,-10,-8,-10,-1,-17,-9,-18,-18,-8,-12,-8,-11,-9,-18,-3,-11,-3,-6,-8,-13,-19,-9,-10,-10,-12,-12,-5,-11,-8,-13,-11,-15,-18,-11,-6,-11,-6,-15,-8,-7,-3,-11,-7,-8,-7,-9,-6,-12,-7,-9,-6,-13,-8,-9,-8,-9,-6,-12,-7,-15,-9,-10,-7,-9,-6,-11,-8,-11,-10,-11,-9,-12,-12,-12,-10,-12,-11,-10,-6,-12,-5,-22,-10,-10,-5,-7,-5,-2,-7,-3,-9,-4,-4,-7,-10,-8,-6,-9,-8,-10,-12,-12,-10,-14,-7,-15,-8,-15,-7,-13,-9,-9,-6,-13,-4,-14,-2,-11,-6,-10,-4,-10,-8,-8,-11,-8,-8,-20,-14,-9,-6,-14,-6,-12,-2,-2,-9,-4,-8,-5,-7,-10,-7,-11,-5,-10,-7,-36,-15,-34,-16,-22,-14,-13,-8"],
+[0,"Sentier des Crêtes","6774,5602,20,4,18,3,27,8,22,4,27,5,22,10,23,3,22,7,35,14,41,11,20,11,24,17,18,13,24,20,15,7,5,5,13,5,21,19,11,14"],
+[0,"","8477,4872,0,1,-3,12,-8,13,-9,9,-14,8,-14,6"],
+[0,"","8428,4979,-9,-8,-10,-8,-4,-8,-5,-6,-7,-7,-1,-8,4,-7"],
+[0,"","8398,5049,-4,-3,-45,-25,-64,-36,-52,-30"],
+[0,"Chemin de la Garance","8516,5176,-19,-21,-12,-18,-4,-15,7,-14"],
+[0,"","8448,5178,-25,-46,-7,-8,-41,-22,-15,-8"],
+[1,"Chemin du Cizerain","7474,4003,-4,2,-9,1,-32,-4,-29,-5,-29,-11,-7,2,-1,18,-9,27,9,27"],
+[2,"Route de la Chartreuse","6532,4132,7,4,6,5,6,7,9,13,13,19,19,21,21,17,24,14,24,11,76,29,25,11,12,8"],
+[0,"","6774,4291,5,-4,-3,-2,-18,-10,17,-28"],
+[2,"Route de Meylan","10372,5776,-28,-9,-59,-19,-85,-34,-94,-40,-3,-2,-8,-1,-1,-1,-81,-15,-35,-25,-14,-20,0,-31,0,-29,1,-24,0,-4,4,-64,2,-33,0,-3,1,-7,3,-11,15,-36,1,-9,-1,-6,-1,-6,-7,-16,-19,-18,-72,-68,-3,-3,-5,-6,-3,-4,-34,-38,-54,-49,-2,-2,-3,-4,-2,-3,-38,-25,-52,-23,-67,-22,-55,-17,-8,-2,-37,-10,-43,-4,-44,0,-13,-1,-4,0"],
+[2,"Chemin du Boutet","8974,4921,-10,-7,-10,-9,-7,-14,-3,-14,-10,-12,-9,-5"],
+[2,"","9220,4247,29,22,6,5"],
+[0,"","8922,4855,-2,2"],
+[1,"","9032,4101,4,-1,4,1,2,1,2,1"],
+[0,"","8934,4865,10,-1,6,-1,3,-2,-5,-6,-23,-15,-15,-11"],
+[1,"Chemin Saint-Martin","9573,4052,-5,-1,-24,-4,-30,0,-21,7,-18,10,-12,16,-25,24,-13,13,-16,11,-19,10,-15,8,-9,8,-7,10,-2,13,-3,22,0,8,0,6,-1,5,0,10,-4,9,-8,11,-7,6,-8,8,-21,15,-11,7"],
+[0,"Chemin du Gamond","9537,4439,-8,75,-2,27,-8,35,-11,28,-23,36"],
+[0,"Chemin des contrebandiers","8311,5749,4,3,1,5,5,6,11,8,15,6,8,0,6,3,12,7,5,4,8,1,8,3,19,11,26,11,8,2,10,5,13,5,6,9,5,3,20,-5,11,-3,31,-1,6,2,7,-1,6,3,0,5,6,4,3,4,-2,5,-3,8,0,4,1,4,7,4,12,6,9,7,21,10,9,3,3,3,2,5,5,3,6,3,6,0,6,-1,15,4,6,3,6,2,6,3,13,1,9,2,6,3,5,1,8,0,13,3,7,1,6,2,5,3,3,4,1,0,3,2"],
+[0,"La Ruine - la Limite","8263,6075,14,5,9,3,11,2,11,5,13,5,8,4,10,13,6,7,0,-11,-2,-6,-2,-8,-6,-10,-8,-8,-1,-4,9,6,10,4,13,9,13,7,9,5,4,4,0,7,5,-6,2,-4,-6,-9,2,-3,-5,-9,-7,-8,-9,-10,-8,-10,-9,-11,15,5,18,9,14,6,14,8,9,3,6,3,3,6,3,4,5,4,-3,6,-1,5,-2,6,5,2,9,2,4,1,5,3,6,1,-1,-4,7,1,4,1,2,3,3,8,6,2,-3,-7,0,-9,-4,-6,4,0,4,1,3,3,4,10,10,5,9,5,6,8,6,3,-1,-11,-4,-12,-3,-9,0,-7,1,-7,-1,-6,13,7,7,10,2,6,6,1,4,2,1,6,9,5,-3,-16,0,-16,-3,-17,-2,-3,-5,-5,0,-1,14,4,19,19,16,9,-9,-22,-1,-17,28,16,-7,-11,5,-5,9,1,-7,-15,17,3,-3,-15,7,-4,10,8,5,-10,2,-6,13,1,3,-11,7,5,1,-4,4,-1,3,2,-2,5,0,3,0,5,5,1,9,-4,9,-3,7,1,13,6,3,-6,-2,-5,-7,-9,2,-1,9,2,0,-1,-4,-2,-4,-3,3,-1,7,2,10,4,4,0,6,2,8,4,5,6,3,1,4,-7,0,-12,-10,-14,1,-7,7,-3,5,-14,4,-4,-1,-4,8,-4,-4,-5"],
+[0,"","8969,5967,-2,5,-3,2,-3,5,-1,6,0,7,-1,12,-1,10,1,15,1,26,4,26,9,4,7,7,-1,16,2,9,3,11,4,12,-3,32,1,33,-40,56,-50,46,-33,43,0,24"],
+[0,"","8935,4414,-4,-2"],
+[0,"","8827,4570,17,9"],
+[0,"","8859,4523,19,8"],
+[0,"","6784,5591,-4,-1,-16,-5,-36,-13,-68,-24,-21,-7,-22,-7"],
+[0,"Route du Saint-Eynard","6358,5490,-5,-1"],
+[0,"Route du Saint-Eynard","6353,5489,-2,0"],
+[0,"","6369,5491,1,-3"],
+[0,"","6367,5482,5,1,11,3"],
+[0,"","6370,5488,2,-5"],
+[0,"","6383,5486,7,1,6,1,15,2,4,4,19,6,9,0,18,0,4,-2,4,0,2,2,9,0"],
+[1,"Chemin du Boutet","8435,4856,2,2,1,2"],
+[1,"Chemin du Boutet","8438,4860,6,3,7,1,15,4,5,1,6,3,5,2"],
+[2,"Chemin de l'Église","9060,4961,-5,-4"],
+[2,"Chemin de l'Église","9055,4957,-42,-28,-13,-5,-26,-3"],
+[2,"","9159,4200,6,5"],
+[0,"","8621,3944,-1,3"],
+[0,"","8602,3940,-2,4"],
+[0,"","8597,3939,2,-3"],
+[0,"","8614,3942,1,-3"],
+[0,"","8681,3882,-2,-1,-4,-3"],
+[0,"","8696,3895,10,8,0,1"],
+[0,"","8656,3848,2,-1,7,1,11,3"],
+[0,"","8929,4070,-1,3"],
+[0,"","8911,4061,-2,0"],
+[0,"","9080,4146,-6,-6"],
+[0,"","9334,4324,-2,3"],
+[0,"","9317,4316,-3,2"],
+[0,"","9380,4347,3,-3"],
+[0,"","9363,4339,2,-2"],
+[0,"","7911,3849,-5,0"],
+[0,"","8706,4977,-1,5,12,12,10,7,4,0,3,1,13,2,24,13,36,20,14,9,9,8"],
+[0,"","6600,4738,-4,5"],
+[0,"","6790,4395,4,0"],
+[0,"","6437,4095,3,-1"],
+[0,"","6783,4361,-4,1"],
+[0,"","6583,4732,-5,6"],
+[0,"","6791,4383,-1,-8,-5,1"],
+[0,"","6453,4103,3,1,-2,2,-4,3,-2,-2"],
+[0,"","8475,4868,-4,1,-2,2"],
+[0,"","8980,5000,-5,1,-3,-3"],
+[0,"","8976,4993,3,0,3,2"],
+[0,"","8771,5017,-5,4"],
+[0,"","6780,5590,-1,6,-5,6"],
+[0,"","6987,6565,3,-6,3,-7,1,-10,1,-16,5,-13,-1,-4,-2,-4,-10,-5,-10,-4,-9,-6,-14,-13,-21,-19,-21,-19,-19,-15,-15,-9"],
+[0,"Chemin Saint-Germain","7332,4265,-21,-3,-47,-7"],
+[0,"Chemin du Bourcet","7433,4307,-5,16,-9,29,-8,9,-71,39,-11,10,-6,8,-3,7,0,6,2,6,-4,7,-10,9,-20,15,-27,21"],
+[0,"","7138,5030,7,3,13,2,14,4,16,4,13,3,18,2,10,2,47,11,8,-3,10,-3,10,-3,13,-1,21,-1,19,-4,13,-3,13,-3,11,1,8,0,6,3,2,5,18,6,10,5"],
+[0,"","6971,4922,-13,-9,-17,-15,-9,-9,-11,-11"],
+[0,"","7433,4116,-9,1,-11,1,-14,3,-11,4,-8,3,-8,4,-6,5,-3,4"],
+[0,"","6731,4900,8,4,11,3,13,2"],
+[0,"Chemin du Mollard","6791,4332,7,-2,15,-15,14,-14,16,-20"],
+[0,"Chemin du Bourcet","7791,4343,-3,12,-12,0,-57,-5,-37,-12,-34,-23,-2,-19,-17,3,-2,-11,7,-8,-7,-1,-6,2,-4,-3,-11,2,-15,-8,-3,-11,-12,-6,-15,-10,-13,-2,-12,4,-5,-6,2,-14,-10,-4,-15,1,-17,-1,-16,-11,-26,4,-4,6,-10,32,-1,10,1,9,3,8,1,9,-4,13,-1,1"],
+[0,"Chemin du Bruchet","7700,4440,-10,-3,-14,-3,-22,-8,-20,-11,-15,-9,-6,-4,-6,-4,-15,-9,-26,-14,-18,-11,-47,-36,-30,-16,-28,-7,-9,-1,-39,-6,-4,-7,-14,-13,-33,-11,-12,-2"],
+[0,"","7475,4212,12,1,12,-1,6,-2,7,-6,6,-4,4,4,9,7,15,10,7,11,26,13,10,5,11,-1,9,4,9,9,6,6,9,10,1,2"],
+[0,"","7342,4825,5,3"],
+[2,"Route de la Chartreuse","6855,4709,3,3,4,4,5,4,7,4,8,5,8,4,6,5,5,5,3,4,2,3,1,5,2,8,1,8,4,9,1,5,1,7,1,6,-1,5,-3,6,-4,5,-2,2,-5,3,-9,4,-9,3,-9,2,-7,1,-7,0,-7,-1,-4,-1,-4,-1,-4,-1,-4,-2,-34,-20,-18,-11,-24,-10,-27,-11,-22,-5,-91,-23,-22,-5,-9,-3"],
+[0,"","6971,4922,16,-2,9,-5,9,-6,18,-2,10,4,13,8,23,4,12,-1,17,-5,20,-6,19,2,19,-1,26,7,28,5,8,0,3,0,10,-3,5,-6,5,-9,9,-6,3,-3"],
+[0,"","6893,4823,2,2,0,2,3,4,-1,4,-3,4,-6,9,-2,4"],
+[1,"Allée des Orchidées","8613,4889,8,4,35,-1"],
+[1,"Chemin de Montbivet","10215,6280,0,-6,1,-17,-1,-6,-15,-24,-16,-18,-10,-12,-1,-1,-28,-27,-16,-15,-13,-15,-29,-32,-32,-30,-26,-24,-7,-5,-82,-35,-18,-7,-4,-5,-3,-3,-10,-11,-45,-49,-7,-15,-5,-19,-12,-17,-23,-56,-9,-24,-9,-17,-1,-3"],
+[1,"Chemin de Saint-Hugues","9223,5365,4,2"],
+[1,"Chemin de Saint-Hugues","9227,5367,7,3"],
+[0,"La Ruine - la Limite","8263,6075,1,6,1,7,0,4,7,2,7,12,4,2,4,9,0,4,3,10,12,10,9,8,-1,5,2,4,3,1,5,2,4,3,8,1,12,3,12,1,8,6,28,23,5,9,-2,16,2,6,6,3,23,3,16,5,13,7,11,10,4,10,1,50,3,8,25,15,10,7,26,26,15,9,12,5,40,4,22,6,14,8,7,10,8,-1,23,12,22,11,22,8,13,5,12,5,8,-1,10,-3,7,-6,6,-9,8,-10,10,-5,13,-1,10,3,20,5,16,5,10,6,13,6,10,7,10,8,10,9,8,5,4,6,2,10,2,9,7,10,4,6,5,4,10,9,17,10"],
+[0,"Chemin du Mont Pellet","8748,5825,8,1,8,5,7,3,9,4,6,2,5,-1,20,5,13,0,14,-2,12,-4,16,-10,11,-7,7,-5,4,-6,3,-9,3,-3,7,-8,9,-8,9,-6,18,-12,7,-4,5,0,5,-1,4,-1"],
+[0,"","9387,6113,-8,9,-7,11,-11,11,-12,9,-8,7,-11,6,-19,8,-9,5,-6,4,-2,7,0,7,1,8,5,9,9,11,6,7,0,17,-1,15,-2,24,-6,27,-19,29,-7,14,-10,20,-1,14"],
+[0,"","9420,6103,-10,-1,-9,0,-5,-2,-10,-19,-15,-21,-11,-8,-17,-8,-20,-5,-16,-7,-19,-6,-12,-5,-21,-8,-18,-6,-12,-6,-17,-4,-23,-2,-5,3,-8,-3,-11,-1,-10,0,-13,0,-12,2"],
+[0,"","8710,5784,-7,5,-4,6,-5,7,-4,6,-1,2,5,3,4,3,12,3,9,5,8,2,7,0,7,-1,7,0,10,14,8,11,6,7,6,8,5,7,2,4,-5,4,-1,6,-10,1,-12,0"],
+[0,"","8544,5709,-20,-6,-24,-8,-20,-6,-27,-9,-14,-5,-13,-4,-11,-3,-9,-4,-8,-3,-6,1,-2,2,0,4,4,5,5,5,-2,5,-1,3,-4,2,-7,2"],
+[0,"","7299,4929,5,-10,9,-3,7,-4,12,-5,12,-4,6,1,9,-2,9,-1,8,0,8,-1,4,3,3,3,2,4,6,5,5,5,6,4,5,3,4,1,4,-1,2,-2,2,-3,-2,-9,0,-6,4,-1,6,1,5,3,5,1,5,1,3,-4,0,-4,0,-5,3,-8,3,-1,3,1,4,4,2,1,2,1,5,1,2,-2,1,-3,2,-6"],
+[0,"","9509,6188,-13,11,-12,10,1,6,6,18,-3,8,-11,9,0,14,-2,7,-4,4,-7,3,-12,3,-26,13,-11,4,-12,2,-4,4,1,7,3,9,-21,7,-14,-2,-12,9,-6,8,-23,9,-10,6,-48,35,-6,5"],
+[0,"","7664,5270,16,-11,4,-5,3,-3,2,-1,4,-3,9,-2,9,-6,8,-5,13,-6,15,-5,12,-3"],
+[1,"Chemin de Billerey","9374,5537,-40,8,-29,12,-10,8,-8,6,-19,17,-12,10,-8,6,-8,-3,-42,-17,-48,-20,-9,-3,-14,-3,-9,-1,-12,0"],
+[2,"Chemin de Rochasson","7480,4698,75,17,36,8,36,10,9,2,9,3,11,3,2,0,2,1,12,3,35,7,33,6,7,0,9,1,34,-1,29,0,83,-1,55,0,63,-1,57,-1,26,-1,17,-4,9,-4,31,-15,25,-6,23,-1,26,2,18,7,17,12,41,29"],
+[1,"Chemin de Saint-Hugues","9234,5370,2,4,3,3,2,2,13,12,14,15,32,38,9,16,0,2,7,21,7,15,4,4,6,5,41,30"],
+[1,"Chemin du Boutet","8567,4911,21,5,41,12,10,6,15,9,10,13,42,21,24,18,4,7,1,1,6,9,20,10,30,16,4,6"],
+[0,"","8958,5758,15,8,10,3,18,7,13,7,8,3,3,4,2,35,3,24,-1,9,-3,9,-6,11,-26,29,-25,31,-6,7,-2,6,3,15"],
+[0,"","8446,4859,5,5"],
+[0,"","8435,4846,6,7"],
+[0,"","8441,4853,5,6"],
+[0,"","9479,5995,0,15,3,13,14,23,27,31,35,44"],
+[1,"","9668,5374,-36,-33,4,-8,-71,-43"],
+[0,"","6343,5542,13,1,17,1,4,0,4,-2,4,-3,2,-5,2,-6,2,-6,3,-3,4,-2,3,-1,2,-2,0,-1,-2,-3,-4,-2,0,-2,0,-1,5,-7"],
+[0,"Chemin de Pierrache","6850,4704,-80,-7,-75,-12,-13,-1"],
+[0,"Chemin des Jaux","6484,4182,8,-8,13,-13,16,-16"],
+[1,"Chemin des Jaux","6434,4212,12,-9,10,-8,6,-4,5,-3"],
+[0,"Chemin des Jaux","6465,4329,2,-8,-1,-6,-4,-19"],
+[0,"Chemin des Jaux","6463,4288,9,-22,6,-11,5,-10"],
+[0,"","6364,4393,9,1,9,3,10,6,5,2,9,-1,9,-1,8,-2,17,-8,10,-4,8,-4,12,-3,12,-2,16,-2,12,-1,11,1,11,0,11,0,25,-5,14,-1,12,0,21,5,14,8,3,2,-1,3,4,7,17,19,6,12,3,11,1,19"],
+[0,"","6462,4296,9,-2,30,6,22,6"],
+[0,"","6677,4349,66,33,20,6,17,-10,5,-2"],
+[0,"","6473,4191,46,28,17,10,20,14"],
+[0,"","6305,4166,8,6,15,6,95,32,6,2,5,0"],
+[0,"","6632,4387,4,0,10,3,54,31,15,15,27,17,28,17,23,10,20,5,8,2"],
+[0,"","6505,4054,8,4,41,3,14,-2,16,-10,5,-3"],
+[0,"Chemin du Bourcet","7788,4355,11,1,6,-1,3,-2,2,-4"],
+[0,"","7392,4797,6,-3,15,-10,2,-2,9,-9,2,-6,6,-7,1,-3,4,-6,6,-11,4,-3,7,-1,8,-1,8,-5,2,-3,1,-4,2,-4,3,-2,2,-5,0,-4,-2,-6,-1,-3,3,-1"],
+[0,"","6560,4610,12,19,13,18,2,3,21,29,16,9,16,3,16,-1,26,-6"],
+[0,"","6499,4568,-3,-20,-1,-8,1,-4,-3,-3,-5,-2"],
+[0,"","7541,4987,19,-16,15,-13,8,-13"],
+[0,"","7206,4690,8,3,58,23,57,28,70,15"],
+[0,"","7399,4759,17,2,16,-1,19,0,33,-7,46,-6,32,0,11,-2,21,-4,5,-1,28,-7"],
+[0,"","7268,4873,5,-2,16,-8,20,-12,38,-23,9,-4,16,-11,14,-12"],
+[0,"","7304,4919,17,6,14,5,16,6,19,9,14,6,26,5,29,10,16,7,12,6,10,4,9,0,30,1,25,3,16,5,14,9,12,4,13,-9,6,-6,12,-9,16,-8,20,-10,7,-4,6,-3,17,-10,15,-8,13,-7,8,-8,3,-2,4,-2,5,-2,14,-3"],
+[0,"","8347,5777,3,14,4,17,-19,-3,-68,-14,-13,-3,27,32,30,22,1,3,-9,2,-29,-7,-23,-6,-34,-8,-2,9,-16,1,15,20,4,13,5,3,10,8,9,6,-11,-1,-30,-4,-49,-10,3,7,13,17,-37,-4,25,26,26,25,-26,-1,-28,-15,-18,0,-20,-8,1,5,1,5,-2,4,4,3,4,7,-29,-2"],
+[2,"Route du Col de Porte","6260,6429,30,9,29,12,30,15,22,12,28,19,20,14,10,12,12,14,16,18,9,10,9,15"],
+[0,"Chemin de Pierrache","6961,4597,-8,0,-9,-1,-11,-4,-13,-7,-16,-12,-15,-13,-28,-25,-9,-10,-9,-8,-7,-7,-5,-7,-5,1"],
+[0,"","6946,6132,-6,14,-9,17,-8,6,-9,9,-2,7,4,35,1,13,-4,12,-14,14,-17,15,-13,9,-10,8,-12,4,-8,8,-1,9,-1,14,1,5,2,7"],
+[0,"","7182,5782,-21,16,-15,14,-10,11,-16,22,-10,14,-20,16,-9,16,-16,15,-10,18,-20,12,-11,15,-12,13,-10,8,-14,18,-30,5,-17,12,-4,5,-10,16,-2,20,3,20"],
+[0,"Chemin des Malencharets","9642,6390,-12,14,-24,14,-25,10,-26,7,-28,3,-23,4"],
+[0,"","8891,5538,10,-1,22,1,13,5,9,6,6,9,8,14,5,6,4,3,6,2,8,2,8,2,6,2,7,3,9,5,6,5,8,8,5,5,6,3,7,1,8,1,8,3"],
+[0,"","8623,5652,10,-10,12,-6,13,-9,9,-6,7,-11,11,-8,15,-6,15,-10,16,-13,14,-15"],
+[0,"","9398,6400,7,-3,5,-3,4,-3,6,-1,7,0,8,1,6,-1,6,-2,12,-4,13,-3,6,-3,4,-3,7,-6,9,-4,9,-2,13,1,16,0,16,0,14,3,21,7,25,6,15,4,15,6"],
+[0,"","8667,5621,13,-4,16,-6,41,-15,26,-12"],
+[0,"","9616,6269,22,6,18,7"],
+[0,"","8791,5839,2,-2,0,-5,5,-5,0,-4,-2,-2,-6,-3,-7,-7,2,-8,8,-8,7,-1,43,7,16,3,14,0,16,-2,-3,-6,-2,-5,-4,-15,-1,-13,-11,-13,-19,-13"],
+[0,"","8556,5711,17,-20,26,-29,13,-3,11,-7"],
+[0,"","9716,6434,5,-9,4,-7,6,-7,6,-6,9,-14"],
+[0,"","6251,5648,-2,23,8,22,15,5,22,-2,37,-4,24,-1,-5,7,-16,7,-17,12,-24,23,-10,29,-28,32,-26,32,-1,9,6,9,-4,5,-12,5,-11,15"],
+[0,"","6517,4036,-12,-8,-14,-11,-6,-6,-1,-6,7,-8,5,-6,6,-5,9,-6,10,-7,9,-5,8,-4,8,-9"],
+[0,"","6401,4014,0,7,2,4,3,2,6,0,6,3,4,3,6,6,15,13,11,7,22,8,88,10,14,6,8,6,5,5,0,4,-3,4,-5,1,-21,-2"],
+[0,"","6589,4046,11,-4,9,-3,9,-2,9,-2,11,0,7,0,6,1,6,1,11,4,20,7,14,6,16,7,16,7,21,12,14,11,4,5,0,4"],
+[0,"Place de la Fontaine","6697,4117,45,24,-7,7"],
+[0,"","6680,4118,-11,-8,-2,0"],
+[0,"","6552,4041,-10,2,-3,0,-3,0,-4,-1,-8,-2,-7,-4"],
+[0,"","6766,4138,-6,-4,1,-5,5,-16,3,-7,4,-6"],
+[0,"","6667,4110,-19,-10,-15,-11,-7,-5,-2,-4,22,-19,6,-3"],
+[0,"","6669,4110,6,-5,6,-2,11,2,4,4,2,4,-1,4,-5,6"],
+[0,"","7644,4916,-3,14,0,8,0,7,4,5,1,7,4,6,7,3,15,8,11,8,10,9"],
+[0,"","8163,4352,-19,2,-8,3,-3,7,-21,-4,-19,-4,-18,-5,-20,-6,-23,-5,-26,-4,-9,-1"],
+[0,"","7304,4919,8,-16,8,-10,13,-8,18,-5,24,0,17,0"],
+[0,"","7552,4821,6,2,4,1,1,1,-1,2,-3,1,-2,0,-2,1,-1,0,1,1,2,2,2,1,0,1,-2,0,-5,0,-2,0,0,1,1,1,3,3,-1,1,-2,0,-3,0,-8,-1,-3,1,0,2,2,3,2,3"],
+[0,"","8264,3861,-3,8,0,3,-3,5,10,13,-8,14,-4,7,-7,1,-11,-2,-7,-3,-6,-7,2,-9,1,-8,8,-7,9,-2,13,3"],
+[0,"","7534,4845,-7,5,1,6"],
+[0,"","8017,4357,-11,-2,-7,-2,-6,-1,-6,-2,-11,-5,-9,-3,-10,-3,-6,-3,-1,-4,4,-3,7,0,8,2,10,1,4,1,5,-1,1,-3,-3,-4"],
+[0,"","8181,4324,7,-5,3,-6,2,-11,3,-9,-1,-9,-6,-11,-10,-11,-13,-7,-15,-8,-16,-9,-16,-8,-22,-7,-14,-5,-15,-4,-43,-10,-39,-9,-16,-4,-12,-3,-33,-5,-28,-4"],
+[0,"","7761,4889,-2,-5,-1,-5,-4,-4,-2,-5,0,-4,-2,-4,-2,-3,-3,-3,-1,-4,1,-3,-1,-2,-7,-3,-6,-2,-4,-2,-3,-2,2,-3,4,-3,2,-2,1,-3,-1,-5"],
+[0,"","7837,4260,8,-1,10,-2,10,-3"],
+[0,"","8225,3900,-8,9,-5,8,-4,13,-6,11,-4,8,-3,8,-5,8,-1,7,-5,3,-4,5,-3,4,-2,4,-4,4,-5,2,-3,4,-4,9,-6,12,-3,13"],
+[0,"","8034,4369,-17,-12,-3,-2"],
+[0,"","7658,4741,0,4,0,4,0,4,2,2,3,2"],
+[0,"","7671,4759,-7,6,-12,3,-9,0,-7,-1,-9,-2,-9,-1,-8,1,-8,4,-7,7,-6,7,-5,9,-5,10,-6,9,-10,10,-11,0,-8,-1,-8,-2,-7,-3,-4,-3,-8,-5,-8,-7,-4,-5,-9,-6,-10,-3,-25,-6"],
+[0,"","7690,4870,-7,-6,-3,-5,-7,-3,-12,-5,-10,-4,-14,-4,-23,-12,-7,-1,-10,-1,-4,0,-5,1,-20,18,-10,2,-17,-2"],
+[0,"","7738,4910,4,4,3,1,4,2"],
+[0,"","7737,4881,-15,-2,-9,-2,-11,-3,-8,-1"],
+[0,"","7590,4898,3,-6,1,-4,4,-6,2,-6,8,-3,9,3,6,2,7,4,9,4,9,3,5,3,3,4,1,5,-13,15,-7,5,-6,7,-4,8,-6,7,-10,16,-3,5,-3,1,-1,-10,1,-4,1,-5,1,-4,2,-6,-2,-4,-2,-6,0,-5,-1,-6,-2,-7"],
+[0,"","7480,4887,13,6,8,1,7,1,12,3,4,2,5,1,-1,4,-2,3,-1,5,2,3,2,3,3,1,5,0,5,-2,6,-2,8,-2,3,-1,1,0,-5,5,0,1,2,0,3,-1,3,-3,6,-3,0,2,-4,3,-3,2,-2,2,3,0,4,-3,1,0,11,-8,6,-6,3,-4,2,-2"],
+[0,"","7661,4851,-2,-2,-6,-4,-1,-2,5,-1,7,3,6,3,6,3,8,4,6,3,6,3,10,5,9,4,13,6,9,5,17,5,7,3"],
+[0,"","7774,4814,7,5,10,5,14,4,7,3,7,4,4,2,2,2,-1,4,-2,2,-5,2,-7,4,-4,3,-5,4,-1,4,-4,4,-4,6,-3,5,-4,4,-6,3,-8,7,5,5"],
+[1,"","8014,4355,-11,-7,-5,-5,-1,-8,-5,-6,-6,-4,-5,-3,-13,-7,-5,-2"],
+[0,"Chemin des Villauds","7735,4551,-6,3,-3,3,-4,7,-4,7,-7,13,-4,6,-4,5"],
+[0,"","7484,5175,11,-7,18,-10,15,-13,21,-17"],
+[0,"","7484,5175,-7,8,1,9,-1,6,3,3,4,1,5,-2,7,0,4,-1"],
+[0,"","7500,5199,9,-1,6,2,5,3,3,5,3,4,1,5,5,6,5,4,4,3,6,4,3,5,-2,10,1,2,2,2,6,3,3,2,2,6,0,5,1,6,4,5,2,-6,4,-5,3,-4,4,-4,7,8,0,5,1,9,4,4,6,-5,2,-3,6,-4"],
+[0,"","7667,5326,-4,-1,3,12,-7,-1,3,4,-8,-4,3,8,-7,0,2,5,-9,-2,1,7,-4,-2,-2,6,-4,-5,-2,7,-4,-1,-1,5,-4,-3,1,5,-8,-4,-2,7,-5,-1,2,4,-15,-1,2,7,-9,1,-6,7,-6,-4,1,11,-5,2,-4,11,-11,2,0,3,-5,-1,0,9,-3,9,-9,-6,-10,-2,-7,3,-6,0,-7,1,-8,3,-4,4,-6,2,-7,2,-10,4,14,2,-14,3,-10,2,-11,1,7,3,11,3,14,-2,-3,10,-20,14,30,4"],
+[0,"","7472,5185,-10,5,-34,25,-85,66"],
+[0,"","7477,5183,-5,2,-5,10,-6,10,-3,5,-5,9,-8,8,1,-5,4,-5,-8,7,-5,6,-6,8,-4,5,-5,5,-4,4,-4,5,-4,5,-6,5,-6,5,-4,5,-3,5,-2,3,0,3"],
+[0,"","7424,4773,8,3,8,4,8,4,6,-3,7,-1"],
+[0,"","7796,5057,1,8,1,4,-9,5,-8,7,6,9,3,2,1,1,5,7,2,4"],
+[0,"","7798,5104,-4,8,-3,9,-2,9,-7,5,-5,7,-4,7,1,5,-3,8,-14,8,2,10,11,7,20,3,19,2,12,-1,10,-3"],
+[0,"","7798,5104,8,16,5,13,7,13,8,12"],
+[0,"","7549,5122,8,-3,10,-6,20,-18,15,-7,7,-3,7,-2,13,-3,14,-3,16,-4,26,-8,26,-5,36,-4,15,-2,13,0,16,-2,2,3,-2,5,-4,4"],
+[0,"","7838,5182,-7,6,-7,6"],
+[0,"","8652,5740,4,4,8,11,5,8"],
+[0,"","7979,5889,-2,-11,-5,-5,-10,-2,-17,1,-18,0,-11,-4,-2,0,-18,-32,-16,-11,-11,-7,-14,-6,-7,-2,-27,-11,14,-17,-18,0,9,-6,-16,-4,5,-8,-2,-10,-1,-7,-7,-23,-7,-12,-25,-15,-44,-29,-22,-17,-12,-4,-15,-2,-20,-6,-7,-5,-1,-9,-5,-9,-17,-6,-7,-5,-7,-5,-4,-9,-18,-17,-16,-11,-4,-9,1,-10,2,-10,1,-9,-6,-9,-9,-7,-22,-13,-47,-17"],
+[0,"","7494,5479,-25,8,-17,12,-17,5,-5,17,-5,8"],
+[0,"","8069,5940,10,6,12,8,0,3,0,8,2,1,10,7,-2,8,3,3,6,2,9,3,-12,3,7,5,0,4,-2,5,2,8"],
+[0,"","7425,5529,-14,9,-5,18,-16,15,-7,9,-13,8,-13,10,-11,8"],
+[0,"Chemin de la Batie","7808,5211,1,-2"],
+[0,"Chemin de la Batie","7809,5209,10,-9"],
+[0,"","6957,4689,3,5,3,6,6,8,5,8,5,7,5,4,6,4,3,2,10,7,5,6,5,8,5,5,9,6,10,7,17,10,15,10,7,3,6,3,6,2,2,1,9,2,19,6,36,10,9,3,3,1,5,2,5,4,7,7,10,10,11,10,18,16,12,10,19,15,19,13,13,10,14,9,38,21,19,11,18,11"],
+[0,"Chemin des Villauds","7703,4595,-16,11,-8,5,-9,4,-28,15"],
+[1,"Rue du Pal de Fer","7753,3878,20,9,18,5,54,20,11,7,14,4,13,2"],
+[1,"Rue du Pal de Fer","7598,3806,7,0,6,1,13,7,32,17,64,35"],
+[0,"","7276,5061,-20,9,-5,5,-3,4,2,6,12,14,11,12,5,8,-14,3,-22,3,-17,1,-15,2,-11,2,-8,3,-4,3,-6,3,-8,1,-15,1,-5,-1,-7,-3,-7,-4,-5,-6,-4,-3,-2,-2,-5,0,-7,1,-14,1,0,9,6,10,-5,12,-7,7,-10,10,-4,8,-1,6,-5,1"],
+[0,"","7793,5055,3,2"],
+[0,"","7693,4991,0,1"],
+[0,"","7791,5052,-4,-3,-7,-6,-10,-8,-16,-10,-15,-11,-16,-9,-15,-6,-15,-7"],
+[0,"Chemin des Réservoirs","7688,5344,-6,-1,-6,0,-10,3,-4,3,-3,5,0,6,2,6,3,5,5,2,8,3,11,1,10,-5"],
+[0,"Chemin des Réservoirs","9449,6146,-22,-12,-22,-12,-13,-5,-5,-4,-2,-4,-2,-5,-6,-6,-7,-8,-7,-7,-5,-3,-7,-1,-8,0,-14,2,-9,1,-10,0,-11,-1,-6,-2,-4,-2,-16,-6,-8,-7,-9,-10,-6,-11,-6,-12,-5,-10,-10,-9,-6,-3,-11,-5,-23,-5,-9,-1,-11,2,-19,5,-27,6,-15,2,-14,2,-11,-1,-10,-4,-12,-7,-10,-6,-19,-9,-19,-7,-25,-7,-15,-4,-4,-3,-5,-1,-5,-1,-7,0,-14,1,-5,-2,-17,-7,-17,-9,-24,-11,-32,-16,-14,-6,-11,-6,-10,-5,-6,-3,-8,-4,-12,-3,-8,-2,-17,-5,-10,-4,-16,-6,-10,-6,-16,-12,-15,-9,-20,-14,-17,-10,-4,-5,0,-6,4,-5,15,-10,11,-8,5,-4,2,-2,0,-3,0,-2,0,-1,-2,-4,-3,-3,-2,-3,-10,-7,-12,-8,-10,-6,-9,-4,-16,-6,-9,-3,-9,-2,-7,-1,-7,1,-10,2,-20,4,-9,2,-6,2,-10,2,-9,3,-4,1,-7,0,-3,0,-4,-1,-9,-3,-19,-5,-9,-3,-8,-4,-6,-2,-5,-3,-10,-7,-22,-14,-10,-6,-11,-5,-14,-7,-9,-4,-9,-4,-6,-4,-4,-2,-8,-7,-3,-3,-8,-7,-8,-6,-9,-4"],
+[0,"Chemin des Réservoirs","7688,5377,-1,6,1,5,5,7,5,3,9,3,11,0,10,-2,8,-2"],
+[0,"","8325,5643,11,-9,29,-17,19,-18,29,-31,24,-16,22,-6,6,-3,29,-19,15,-6,17,-3,16,-6,12,-7,10,-9,3,-6,-1,-6,-5,-11,-6,-4,0,-9,5,-6,9,-6,7,-6,3,-7,-2,-11,1,-9,3,-9,6,-11,3,-7,-1,-6,5,-8,2,-5,6,-7"],
+[0,"","6298,4611,5,2,4,3,4,4,4,8,7,8,5,6,5,8,4,8,5,6,5,5,7,4"],
+[0,"","6359,4687,4,-4,5,-4,10,-6,3,-4,-1,-5,-5,-6,-3,-9,-4,-10,-1,-10,-4,-6,-1,-3,-1,-8,2,-11,2,-9,-2,-9,-4,-9,-9,-11,-8,-5,-6,-5,-3,-10,-4,-9,-7,-6,-9,-3,-13,1,-17,2,-22,5,-15,4,-15,5,-13,4,-11,3,-10,1,-7,1"],
+[0,"","6470,4639,-3,4,-4,3,-4,8,-2,7"],
+[0,"","6763,4909,8,2,3,3,2,6,4,2,9,0,4,2,4,2,4,4,6,2,6,0,8,-2,11,2,5,-1,14,2,7,3,6,3,7,3,7,4,7,4,5,4,10,5,6,2,5,0,5,-3,4,0,4,1,5,3,5,2,6,0,8,-2,6,1,5,1,6,4,5,0,11,-2,6,0"],
+[0,"","6383,4750,2,-5,7,-5,12,-4,10,-5,12,-5,10,-5,6,-6,3,-6"],
+[0,"","6606,4769,14,4,9,3,13,2,29,7,18,7,17,5,14,4,13,5"],
+[1,"","9013,4929,20,-5,7,3,8,-5"],
+[0,"","9048,4922,13,-10,23,18,32,-11,29,-14"],
+[0,"","9193,4811,-14,14,-12,4,-10,11,-23,1,-13,5"],
+[0,"","9145,4905,5,-4,-27,-28,-2,-27"],
+[0,"","9175,4721,-1,-12,4,-16,-11,-25,6,-6"],
+[0,"Chemin de Manrèse","8923,5538,14,21,6,15,0,11,3,15,-2,10,-2,8,-7,3,-12,6,-8,15,-6,4,-9,0,-3,1,-8,6,-7,5,-5,2,-4,-2,-2,-2,-2,-6,2,-6,0,-4,1,-4,-1,-4,-6,-1,-10,1,-4,0,-9,0,-1,13,-2,8,-7,-2,-5,-1,-1,-2,-10,0,-7,-1,-6,2,-5,-12,1,-12,8,-6,6,-5,3,-4,-3,-6,-14,6,-12,0,-14,10,-8,4,-12,0,-17,-1,-7,12,6,11,14,16,-2,12,-4,8,-5,3,-9,-2,-8,-2,-8,2,-3,9,0,12,7,16"],
+[0,"","6560,4610,-7,2,-8,4,-6,4,-2,4,0,17,-5,1"],
+[0,"","9041,4126,5,-1,4,-1,8,-1"],
+[0,"","9058,4123,24,12,47,21,11,7,24,10"],
+[0,"","6477,5874,29,8,15,7,13,10,10,8,13,7,12,7,12,6,13,4,16,3,15,4,8,4,7,4,6,5,4,5,2,9,5,9,5,12,11,19,4,3,4,14,3,12,1,12"],
+[0,"","6442,5820,-54,16,-26,14,-23,4"],
+[0,"","6504,6065,3,-10,5,-12,3,-18,-4,-16,8,-25,5,-28,-2,-9,-8,-14,-11,-28,-21,-21,-5,-10,-2,-1,-5,-4,-10,-5,-5,-7,-2,-11,-5,-8,-4,-9,-2,-9,14,-8"],
+[0,"Arête du Bret","6065,5685,-1,4,-1,8,-1,8,1,8,1,5,2,7,1,7,0,7,1,7,2,8,1,7,1,9,2,9,2,7,1,6,3,16,1,8,2,11,3,10,3,9,4,9,1,7,2,9,2,11,2,5,5,7,9,10,7,8,4,6,4,7,4,17,4,10,6,11,5,8,3,7,2,11,3,10,4,8,5,8,4,8,3,8,2,6,2,7,5,9,5,8,3,10,2,8,8,11,4,8,3,10,4,7,4,11,3,6,6,9,4,6,2,1,10,-3,8,-4,13,-4,11,-2,8,-1,9,1,13,4,7,1,8,1,11,-1,9,0"],
+[0,"","6734,5588,-7,7,-8,7,-5,8,-3,13,-2,6"],
+[2,"Route du Saint-Eynard","6825,6944,-4,-25,0,-9,1,-9,3,-9,3,-10,19,-43,2,-5,5,-9,9,-16,12,-15,13,-16,9,-10,11,-12,26,-33,29,-34,8,-12,9,-15,4,-19,3,-20,1,-17,1,-18,0,-11,-2,-12,-13,-21,-18,-25,-43,-49,-20,-29,-8,-14,-7,-12,-2,-6,-4,-8,-19,-45,-13,-18,-15,-13,-122,-92,-42,-27,-21,-11,-15,-5,-19,-4,-27,-10,-28,-16,-12,-7,-12,-6,-16,-6,-20,-5,-31,-4,-19,-1,-17,-2,-10,0,-7,1,-26,9,-19,5,-8,0,-9,0,-6,-1,-3,-3,-1,-3,1,-3,4,-3,7,-4,8,-3,6,-5,9,-7,12,-15,11,-6,7,-3,8,-3,20,-3,28,-3,21,-6,18,-5,9,-3,38,-11,19,-1,22,-1,22,1,32,4,19,-3,29,-8,9,-3,25,0,52,10,56,6,15,0,15,-1,16,1,14,3,11,2,7,1,6,-1,4,-2"],
+[0,"","9307,4063,-6,2,-9,4,-19,11,-14,8,-15,14,-7,8,-11,12,-8,8,-10,11,-6,8,-7,8,-5,4,-5,5,-11,11"],
+[0,"","6553,5521,20,2,9,3"],
+[0,"","6590,5534,-4,-4,-4,-4,-16,10"],
+[0,"","6566,5536,24,-2,5,2,4,3,2,3,1,4"],
+[0,"","6481,5526,8,-1,9,-3,8,-4,2,-4,-1,-5,7,-4"],
+[0,"","9210,5658,-3,-10,-2,-13,13,-16,12,-10,10,-8"],
+[2,"Route du Saint-Eynard","6402,5498,-33,-7,-11,-1"],
+[2,"Route du Saint-Eynard","6510,5552,33,-7,6,-2,3,-2,0,-2,-2,-2,-5,-1,-6,-1,-8,1,-11,-1,-10,-1,-16,-4,-13,-4,-7,-2,-6,-4,-7,-5,-9,-4,-10,-4"],
+[0,"","6607,5550,0,3,-2,2,-7,3,-13,2,-15,3,-27,3,-10,2,-13,0,-12,-1,-14,-1,-23,-2,-16,-1,-30,-1"],
+[0,"","6617,5548,-10,2"],
+[0,"","6617,5548,0,-14"],
+[0,"","8276,4974,6,3,7,-3,3,-5,1,-4,-1,-4,1,-4,4,-2,6,-1,13,0,8,2,5,1"],
+[0,"","9504,6442,6,17,12,16,3,14"],
+[1,"","6736,3868,11,11,12,11,6,7,-1,4"],
+[1,"","6771,3843,18,8,16,6,23,6,24,5,19,5,18,5,18,3,20,3,14,3,2,3"],
+[0,"","6982,4683,3,13,3,10,4,10,4,9,0,4,-3,4"],
+[0,"","7905,4882,-8,-3,-3,-3,-2,-3,-1,-3,0,-6,-1,-5,-4,-7,-3,-6,-3,-6,-2,-5,-3,-5,-2,-4,-3,-3"],
+[0,"","6480,5500,7,2,9,1,6,4"],
+[0,"","7984,5897,-5,-8"],
+[0,"","8055,5937,-16,-25,-23,-13,-17,-8,-9,4,-6,2"],
+[0,"","8057,5939,-2,-2"],
+[0,"","8069,5940,-9,3,-3,-4"],
+[0,"","8114,6014,9,6,2,3,4,1,5,1"],
+[0,"","8134,6025,28,8,13,7,9,6,28,8,32,11,19,10"],
+[0,"","6876,6409,16,-5,17,-3,11,-3,20,-1,15,-2,13,-2,13,0,12,1,13,4,18,4,21,4,25,5,28,7,21,5,11,5,10,4,6,4,3,4,6,7,9,10,12,12,9,12,8,13,8,13,8,9,10,7,14,8,14,10,12,8,11,7,12,7,13,3,10,-5,3,-8,2,-18,1,-20,2,-14,0,-9,1,-13,4,-12,9,-13,10,-10,11,-6,14,-8,19,-9,22,-8,18,-6,18,-7,20,-8,15,-6,21,-7,21,-4,25,-3,26,0,30,0,23,2,25,1,21,2,25,4,18,4,18,2,33,1,23,2,23,4,13,7,14,8,18,8,21,11,16,8,15,8,15,7,18,6,17,5,16,7,19,10,18,11,21,12,20,14,19,14,17,11,21,15,11,12,8,9,12,16,5,19,6,16,5,17,2,18,3,19,4,25,3,17,3,18,4,16,4,9,7,11,8,14,9,18,3,15,1,15,0,10,-1,7,-4,6,-12,12,-11,10,-9,6,-11,6,-16,9,-12,8,-18,5,-19,4,-22,7,-21,9,-19,6,-14,6,-13,8,-10,7,-3,6,1,25,-3,25,-2,28,0,4,0,29,2,21,5,17,-4,12,-6,7,-13,10,-26,18,-17,11,-15,12,-16,11,-5,2,-11,2,-18,2,-37,1,-13,1,-15,4,-20,7,-17,4,-20,7,-13,3"],
+[0,"","7834,6471,24,-5,20,-2,16,-6,21,-3,21,2"],
+[0,"","7271,6179,-12,-33"],
+[0,"","7316,6017,3,8,11,18,5,10,0,13,-4,21,0,15,-6,14,-9,11,-14,19,-8,9,-12,11,-11,13,-3,16,5,15,10,10,6,11,4,16,5,16,3,18,0,23,-1,16,0,10,5,11,11,13,10,13,7,11,4,14,3,18,-1,13,-2,21"],
+[0,"","6988,6201,14,-11,16,-18,23,-8,20,-1,17,-6,-1,-11,3,-10,9,-6,28,-2,19,-7,18,-10,16,-10,14,-14,14,-14,9,-9,15,-11,8,-13,5,-24,-22,-17,18,-16,45,-4,26,-11,33,-15"],
+[0,"","6299,5564,8,-4,9,-4,10,-4,9,-3,5,-3,3,-4"],
+[0,"","6388,5836,-11,15,-7,15,-7,10,-4,10,-3,5,-3,8,1,6,5,9,0,9,1,6,0,7,-1,10"],
+[0,"","6359,5946,-2,7,-3,6,-7,7,-11,9,-4,5,-6,5,-9,10,-12,11,-11,7,-8,5,-13,11,-19,15,-9,8,4,8,11,5,37,18,18,7,19,5,14,2,34,0"],
+[0,"","6507,6190,12,0"],
+[0,"","6421,6186,14,0,15,1,11,1,16,1,8,1,22,0"],
+[0,"","6460,6132,0,20,0,14,5,9,11,7,12,3,13,3"],
+[0,"","6501,6188,18,2,7,2,8,5,12,8,11,7,13,11,15,14,17,12,9,10,17,13,23,14,18,9,19,7,22,7,18,8,13,9,19,11,18,11,12,10,17,12,25,15,15,10,15,9,16,11"],
+[0,"","7597,5979,23,17,17,13,13,11,18,9,10,7,5,6,-6,3"],
+[0,"sangle court","7323,5861,11,3,10,2,7,3,6,7,4,9,3,7"],
+[0,"Chemin de la Buisse","9562,5899,-13,13,-38,37,-21,28,-5,7,-6,11"],
+[0,"","9544,5121,-9,-24,30,-50"],
+[0,"","6435,4076,13,6,17,5"],
+[0,"","6470,4107,-37,-23,0,-3,2,-5"],
+[0,"","6463,4111,7,-4,7,-2,8,-2,7,0,20,4,9,1,8,0,5,-1"],
+[2,"Route de la Chartreuse","6393,4067,3,2,8,4,33,22,5,4,5,4,7,3,9,5,7,3,3,1,6,2,17,4,5,1,5,1,14,4,12,5"],
+[0,"","6863,3933,15,-2,23,4,19,9,19,13,14,14"],
+[1,"Clos Saint-Bruno","7345,3917,9,-1,28,3,13,-2"],
+[0,"","6616,4103,3,4,7,11,10,14,11,12"],
+[0,"","6568,4059,6,4"],
+[0,"","6590,4076,3,-1,9,10,8,9,6,9"],
+[0,"","6591,3998,-8,-5,-10,-7,-4,-3,-4,-2,-4,-5,-4,-6,-3,-7,-8,-8,0,-9,5,-15,2,-12,1,-8,1,-12,-1,-8,-3,-8,-9,-14,-6,-13,0,-6,2,-12,4,-11"],
+[1,"Chemin des Jaux","6483,4245,-3,-9,-4,-10,-2,-2,-4,-2,-36,-10"],
+[0,"Chemin des Jaux","6462,4296,1,-8"],
+[1,"","8693,4318,112,45,10,-6,16,-27,1,-5,0,-4,-2,-7,10,-15"],
+[0,"","7663,4757,8,2,10,1"],
+[0,"","7736,4766,-4,1"],
+[0,"","7813,4820,-12,-3,-6,-1,-6,-1,-15,-1"],
+[0,"","6512,4280,-7,-6,-9,-11,-8,-11,-5,-7"],
+[1,"","9813,4489,-10,16"],
+[1,"Impasse des Arriots","9751,4563,20,9,21,12"],
+[0,"Chemin des Arriots","9751,4563,4,-5,31,-37"],
+[0,"","7863,4776,21,3"],
+[0,"","7745,4761,-9,5"],
+[0,"","6472,5518,-4,2"],
+[0,"","7820,4171,6,-2,14,0,15,1,16,2,7,1,3,1,2,2,0,3,-1,3,-1,2,-3,2,-5,1,-4,0,-4,0,-5,0,-12,-1,-14,0,-10,-1"],
+[0,"","7834,4186,1,3,1,11,3,10,1,11,1,4,1,2,0,3,0,1,-2,4"],
+[0,"","8003,4292,5,-11,13,4,20,3,4,1,11,3,22,5,4,1,32,8,40,11,27,7,-11,18,-7,10"],
+[0,"","7860,4267,6,2,2,-2,2,0"],
+[0,"","7841,4225,4,-3,4,-3,5,-4,3,-3,4,-4,2,-4,1,-5,1,-4,0,-4,0,-4"],
+[0,"","7863,4204,4,0,7,1,5,0,3,-2,5,-2,3,-1,2,-2,1,-2,-1,-2,-2,-2,-3,0,-4,1,-3,1,-3,0,-3,0,-2,-1,-2,-2,-1,-4"],
+[0,"","8021,4285,3,-4,-60,-16,-72,-19,-16,-4,-8,-6,-6,-2,-10,-2,-10,-1"],
+[0,"","7975,4295,-12,18"],
+[0,"","7915,4280,0,1"],
+[0,"","7892,4275,23,6,18,5,2,1,21,6"],
+[0,"","7935,4287,-4,5,-7,11,18,6,8,-12,-19,-5"],
+[0,"","8024,4281,11,-17,-25,-7,-68,-17,-47,-12,-7,3,-5,3,-3,2,-12,0"],
+[0,"","7583,5005,2,1,30,27"],
+[0,"","7719,4921,-25,-20,-7,3,-9,16,-15,18,-12,9,-1,16"],
+[0,"","7563,4821,11,-6,12,-4,8,-5,15,-8,6,-1,9,1,7,4,11,4,16,9,8,4,14,5,14,2,12,1,13,-2,13,-3"],
+[0,"","7809,4804,-14,7"],
+[0,"","9139,5720,-9,16,-7,17,-12,21,-4,8,-20,24,-12,16,-24,17,-21,10"],
+[0,"","9225,3759,-53,95,-13,21,-24,40,-56,90,-14,23,-25,40,-3,5,-13,21,8,7"],
+[0,"","9667,4316,31,10,31,14,170,76"],
+[0,"","9678,4302,-23,-16,-13,-5"],
+[0,"","9172,3854,4,1,4,1,6,2,23,7,28,-9"],
+[0,"","9135,3915,8,2"],
+[0,"","9079,4005,10,2"],
+[0,"","8813,5604,-13,-6,-17,-5,-13,-6,-7,-3,32,-11,22,-10,25,-11,30,-9,19,-5"],
+[0,"","8679,5770,0,-3,0,-3,1,-2,3,0,8,7,8,6,11,9"],
+[0,"","8921,5397,-5,3,-20,-1,-9,-3,-9,-5,-3,-5,-3,-1,-1,3,0,4,2,6,13,12,4,4,1,5,68,72,16,16,1,3,-1,4,-14,15,-14,4,-5,1,-9,3,-10,1"],
+[0,"","9016,5325,-2,4,0,4,-1,2,-4,2,-3,1,-3,2,-9,7,-21,15,-9,6,-10,6"],
+[0,"","8891,5419,-21,-15,-10,-9,-10,-10,-9,-11,-21,-18,-6,-3,-5,0,-9,2,-10,4,-6,6,-3,4,1,4,3,5,6,5,3,3,12,8,9,6,7,7,5,7,4,6,12,13,18,16,31,29,10,10,6,8,8,13,1,3,0,10,-9,9,-17,7"],
+[0,"","8287,6121,-10,-3,-5,-4,-15,-6,-8,-4,-13,-11,-17,-12,-15,-9,-17,-7,-16,-1"],
+[0,"","8891,5801,-2,1"],
+[0,"","8829,5915,-9,7,-8,5"],
+[0,"","8394,5323,14,-12,14,-13,11,-21,4,-11,8,-14,12,-16,4,-5"],
+[0,"","8616,5058,-40,33,-29,34,-34,40,7,5,4,5"],
+[0,"","8878,4531,21,5,25,4,11,5"],
+[0,"","9055,4957,-6,4,-6,1,-15,7,-7,3,-7,4,-6,6,-8,5"],
+[0,"","9164,4173,10,4"],
+[0,"","9798,4485,3,-5,2,-3,2,-6,4,-1,10,2,10,1,6,-4,0,-3,3,-6,1,-5,-2,-4,-4,-3,-7,-2,-5,1,-7,3,-8,4,-8,2,-7,1,-8,0,-10,-4,-8,-4,-4,-6,0,-5,-31,-15,23,-22"],
+[0,"","8046,4560,-1,3"],
+[0,"","8059,4474,-11,10,-7,10,-4,11,-4,9,0,7,3,11,7,13,4,11,-1,4"],
+[0,"","8885,4389,-1,-5,-21,-8,-7,3,-11,-4,-4,-3,-3,-3,-2,-3,-5,-2,-7,2,-6,3,-4,2,-4,-1,-49,-15,-62,-24,-13,-5"],
+[0,"","8345,3972,4,-1,17,-30,0,-3,-78,-32,-20,-16"],
+[0,"","7997,4030,-5,-3,2,-3,1,-3"],
+[0,"","9138,3855,17,-32"],
+[0,"Saint-James Park","9145,3871,-15,4,-2,-1,-44,-7,-66,0"],
+[0,"","9130,3875,-2,1,-16,11,-13,17"],
+[0,"","9140,3861,-2,-6,-49,-12"],
+[0,"","7732,4822,8,-3,11,-3,9,-3"],
+[0,"","8048,4618,1,7"],
+[0,"","8048,4631,-2,6"],
+[0,"","8046,4637,-2,13"],
+[0,"","8044,4650,-4,19"],
+[0,"","8040,4669,-1,6"],
+[0,"","8039,4675,4,1"],
+[0,"","8049,4625,-1,6"],
+[0,"","6288,4027,34,18"],
+[1,"","9836,5527,-7,-21,-3,-17,0,-17"],
+[0,"","9624,5393,10,12,-3,11,-14,12,-17,15"],
+[0,"","9554,5613,3,-4,52,-5,18,0,10,2"],
+[0,"","6773,4096,17,11,17,14,28,21,30,20"],
+[0,"","7222,4872,8,-3,5,-5,4,-5,7,-8"],
+[0,"","7448,4784,-3,3,-7,3,-7,6,-4,6,-8,5,-4,0,-10,-4,-7,-9,-9,-4,-8,-5,-12,1"],
+[0,"","7486,4786,11,-12,15,-6,19,1"],
+[0,"","7431,5238,8,-21,-15,13,4,-15"],
+[0,"","7102,5124,-18,2,-18,4,-1,3,-5,2"],
+[1,"Chemin du Miraillet","8136,4807,9,-1,13,1,24,3,33,7,15,2,6,0,28,0"],
+[1,"Chemin du Miraillet","8264,4819,26,-1,30,-1,5,0,3,-2"],
+[0,"","9790,4130,10,-7,13,-5,7,-3,4,-3,2,-3,0,-4,1,-4,2,-3,4,-2,27,-11"],
+[0,"","9758,4099,-2,3,0,4,6,8,5,5,8,4,15,7,36,14,13,2"],
+[2,"","9300,4307,17,9,7,3,10,5"],
+[0,"","9037,4073,6,7"],
+[0,"","9170,4209,0,-7,1,-8"],
+[0,"","8905,4024,32,18,25,14,49,27"],
+[0,"","9024,4061,-21,-27,-2,-3"],
+[0,"","8976,4042,-21,-11"],
+[0,"","9002,4030,-8,-11"],
+[0,"","9040,4020,-2,-4,3,-11,-3,-4"],
+[0,"","8937,4042,7,-7,9,5,4,-4"],
+[0,"","8957,4036,16,9"],
+[0,"","8957,4036,-6,-4,-2,-1"],
+[0,"","8951,4032,6,-4,6,4,26,-12,44,-19,5,-3,9,-4,4,-10,0,-10,-4,-9,-10,-7,-10,-5,-15,-4,-16,2,-23,5,-14,9,-22,11,-6,8,-3,17,-9,7"],
+[0,"","8998,4032,-9,-12,-3,-3"],
+[0,"","9034,4019,2,-14,-3,-4,-3,-4"],
+[0,"","9029,4110,13,8"],
+[0,"","9010,4101,19,9"],
+[0,"","9000,4111,2,-2,4,-5,2,-2"],
+[0,"","9020,4125,7,4"],
+[0,"","9044,4133,4,-3,3,-3"],
+[1,"Allée du Gaillet","9138,3926,25,8,32,10,17,5"],
+[1,"Allée du Gaillet","9213,3948,-1,1,-1,1,0,2,1,1,2,1,1,1,2,0,2,0,2,-1,1,-1,1,-1,0,-1,0,-2,-1,-1,-1,-1,-2,0,-2,0,-2,0,-2,1"],
+[1,"Rue du Champlars","8061,3862,23,-54,3,-4"],
+[0,"","7897,4179,-14,0"],
+[0,"","7099,4361,8,4,7,12,5,5,7,0,6,-3,0,-6,-19,-16,-23,-17,-5,-8,-1,-4,1,-5,31,-51,6,-6,15,-8,5,-6"],
+[2,"Chemin Saint-Bruno","6461,4047,-14,-8,-21,-14,-15,-8,-10,-3,-6,-2,-14,-5,-16,-6,-20,-5"],
+[2,"Chemin Saint-Bruno","6887,4016,-47,-3,-12,-1,-34,-3,-30,1"],
+[2,"Chemin Saint-Bruno","6764,4010,-35,-2,-27,-7"],
+[2,"Chemin Saint-Bruno","6615,4000,-9,2,-13,4,-12,7,-13,9,-16,19,-15,10,-9,2,-23,1"],
+[2,"Chemin Saint-Bruno","6505,4054,-12,-1,-19,-2,-13,-4"],
+[0,"","6584,4071,6,5"],
+[0,"","6674,4148,24,-21"],
+[2,"Route de la Chartreuse","6774,4291,6,5,4,6,5,14,2,8,0,8,-1,9,-3,9,-2,6,-2,5,1,7,1,8,3,13,2,6,1,4,1,6,0,5,0,6"],
+[2,"Route de la Chartreuse","6792,4416,-1,6,-1,7,1,7,0,4,2,7,4,6,3,6,5,5,5,6,5,7,6,10,1,2,4,15"],
+[0,"","6993,4733,0,6,0,6"],
+[0,"","6553,4612,-23,-20"],
+[0,"","6585,4647,-7,14"],
+[0,"","6902,4865,-9,-7,-7,-6"],
+[0,"","6921,4878,-15,-10,-4,-3"],
+[0,"","6854,4888,10,0,8,1,7,1,3,2,6,2,7,1,8,2,4,1,4,1,3,-2,1,-2,-5,-6,-4,-2,0,-5,5,-3,10,-1"],
+[0,"","7272,4910,-12,-14,-2,-9"],
+[0,"","7438,5060,7,12,8,10,9,11,10,9,9,4,11,5,13,6,9,2,13,1,22,2"],
+[0,"","7374,4972,26,17,27,19"],
+[0,"","7573,5132,0,0"],
+[0,"","7570,5127,0,-1,0,-1,2,-2"],
+[0,"","7615,5140,-21,16,-12,16"],
+[1,"Chemin du Boutet","8482,4874,28,13,41,21,16,3"],
+[0,"","8702,4914,-17,3,-16,-1,-11,3"],
+[0,"","8658,4919,-5,1,0,4"],
+[0,"","8653,4924,-1,3,-8,0,-5,7"],
+[0,"","8644,4927,10,4"],
+[0,"","8639,4934,-5,5"],
+[1,"","8654,4954,-5,-7,-15,-8,-16,-7,-41,-10"],
+[1,"Chemin de la Batie","8629,4928,14,-4,10,0,25,-2,29,-2"],
+[0,"","8702,4914,9,1,12,-3,11,-3,5,-3,5,-4"],
+[1,"Chemin de la Batie","8861,4814,7,-6,1,-1"],
+[2,"","9165,4205,5,4,50,38"],
+[0,"","9495,4403,11,-11,7,-12,46,-37,11,-9,-1,-6,-21,-17"],
+[0,"","9572,4417,17,0,94,21,17,4"],
+[0,"","9683,4438,0,8,-1,3,-4,7"],
+[2,"Rue du Général de Gaulle","9715,4465,56,13,11,3"],
+[2,"","9513,4412,13,4,13,4"],
+[2,"Chemin de l'Église","9150,5017,-5,-3"],
+[2,"Route de Meylan","9424,5032,-8,0,-125,-6,-75,-9,-66,0"],
+[1,"Chemin des Arriots","9424,5032,-1,24,-2,31,-4,11,-18,32,-3,6,-2,10,1,10,8,16,4,19,-10,27,-21,29,-28,24,-23,26,-14,16,-5,2,-29,14,-33,24,-10,17"],
+[0,"","9787,4732,37,-43"],
+[1,"Chemin Saint-Martin","9868,4163,-11,-2,-4,0,-7,-1,-106,-42,-20,-8,-28,-10"],
+[1,"Chemin Saint-Martin","9692,4100,-25,-10"],
+[1,"Allée des Moscaries","9678,3922,-4,-1,-29,-12,-12,-19"],
+[1,"Allée des Moscaries","9633,3890,-38,10"],
+[1,"Chemin de Jallières","8953,4211,19,31,24,40,13,21,-4,16,-69,87,-2,2,-3,4,-19,25,-3,4"],
+[0,"","8428,4896,49,-23"],
+[0,"","8922,4539,8,3,5,-3,6,-3,0,-4,-17,-1,-1,5,-1,3"],
+[0,"","8935,4545,5,6,2,6,-2,7,-3,9"],
+[0,"","8948,4441,17,21"],
+[1,"Chemin de la Chicane","9114,4633,-51,48,-24,26,-10,8,-36,30,-21,20,-16,13,-1,1,-20,19"],
+[0,"","8972,4765,70,55"],
+[1,"Chemin de la Chicane","8935,4798,-30,27"],
+[2,"Chemin du Boutet","8925,4860,-5,-3,-7,-4,-3,-4,-1,-7,1,-7,0,-3,0,-3,-5,-4"],
+[0,"","9000,4987,-15,6,-6,0"],
+[0,"Chemin des Combes","8940,5031,-5,2,-6,1,-18,0,-20,2,-10,2"],
+[0,"Chemin des Combes","8881,5038,-8,-1"],
+[2,"Chemin de Rochasson","8394,4818,15,7,9,3,8,1,5,0"],
+[2,"Chemin de Rochasson","8431,4829,5,-3,1,-4,-1,-4,-4,-4,-6,-3,-9,-3,-12,-1"],
+[0,"","8392,4819,2,-1"],
+[2,"Chemin de Rochasson","8310,4774,16,11,25,15,23,9,20,9"],
+[1,"Chemin du Miraillet","8084,4812,9,0,8,-1,35,-4"],
+[1,"Chemin de la Croix des Rameaux","8032,4729,-2,9,-9,15,-1,3"],
+[1,"Chemin de la Croix des Rameaux","8037,4704,-5,25"],
+[1,"Chemin du Miraillet","7756,4759,20,7,43,6,14,2,26,3,10,2,12,2"],
+[0,"","7826,4781,-4,3,-13,20"],
+[0,"","7795,4811,-6,4"],
+[1,"Chemin du Labyrinthe","8120,4399,-51,-18,-35,-12"],
+[1,"Chemin de la Batie","8836,4828,25,-14"],
+[1,"Chemin de la Batie","8799,4848,37,-20"],
+[1,"Chemin de la Batie","8707,4920,21,-4,16,-7,13,-12"],
+[0,"","8752,4895,9,-4"],
+[0,"","8744,4902,8,-7"],
+[0,"Chemin des Jaux","6532,4132,-4,5"],
+[0,"","6429,4105,16,12"],
+[0,"","6442,4099,-13,6,-2,-2,-2,-3,-21,-5,-5,-2,-2,-5,-1,-19"],
+[1,"Chemin de la Tour des Chiens","6479,4117,-5,6,-2,2,-9,2,-21,1,-21,0,-45,-6,-13,-2,-66,-8,-2,0,-2,-1,-10,-1,-31,-1,-38,-1,-35,-4,-11,0,-10,1,-7,1"],
+[2,"Avenue de Chartreuse","8728,3965,21,5,17,4,9,3,8,1,5,0,5,0,5,-2"],
+[2,"Avenue de Chartreuse","8625,3944,103,21"],
+[0,"","8807,3991,-14,-2,-19,-7,-47,-14"],
+[0,"Chemin du Gamond","9539,4420,-2,19"],
+[1,"Chemin de la Batie","8398,5049,73,-60"],
+[0,"","9398,6400,-9,6,-40,23,-11,7,-11,8,-4,2,-19,6,-4,1,-7,5,-6,5,-7,6,-5,3"],
+[0,"Chemin des Jaux","6458,4384,-4,-3,4,-4"],
+[0,"Chemin des Jaux","6458,4377,2,-33,5,-15"],
+[1,"Chemin des Tilleuls","6467,4188,6,3"],
+[0,"","6561,4133,5,-2,0,-2,-1,-2,-6,-7,0,-1,1,-1,0,-1,-1,-2,-1,-1,1,-1,2,-1"],
+[0,"Chemin des Jaux","6528,4137,-7,8"],
+[0,"Chemin des Jaux","6478,4187,6,-5"],
+[0,"Chemin des Jaux","6473,4191,5,-4"],
+[0,"","6590,4076,-12,7"],
+[0,"","9822,6446,-13,2"],
+[0,"","9587,6374,11,7,9,7"],
+[0,"","9459,6384,-7,-8"],
+[0,"","9436,6361,-8,-4"],
+[0,"","9490,6326,-7,-2,-9,0"],
+[0,"","9521,6290,-8,-7,-14,-2"],
+[0,"Chemin des Malencharets","9504,6442,-33,8,-31,12,-20,4,-21,-1,-26,3,-20,3,-18,-4,-21,-2,-27,-2"],
+[0,"","9258,6450,-4,3,0,6,3,2,2,2,4,2,8,1,4,6"],
+[0,"","8794,5897,5,-6,9,-5"],
+[0,"","8774,5949,16,-3,-1,-9,8,-1,1,-5,7,-3,7,-1,23,7,19,7,25,8,18,5,13,3,6,0"],
+[0,"","8765,5947,9,2"],
+[0,"","8501,5836,0,12,-10,8,-6,11"],
+[0,"","7772,5414,8,-7,6,-4"],
+[0,"","7688,5344,-10,-9"],
+[0,"Chemin des Réservoirs","7736,5397,0,-8,-2,-7"],
+[0,"","7829,5255,27,-7,7,-4,15,-10"],
+[0,"","7826,5158,7,9,12,9"],
+[0,"","8170,5234,5,6"],
+[1,"Chemin de la Batie","8250,5167,27,-18,26,-9"],
+[0,"","9905,5987,-28,17,-49,20"],
+[0,"","9736,5685,-25,-12,-13,6"],
+[0,"","9611,4724,-53,-18,-7,-1,-9,15,-5,8,-5,1,-6,-1,-42,-15"],
+[0,"","9688,4300,12,8,23,25,6,7"],
+[0,"","9303,4058,-15,-19"],
+[0,"","9307,4063,-8,-1,4,-4"],
+[0,"","9387,3968,1,2,-3,15,-7,10,-3,9,-28,32,0,3,0,2,-3,3,-14,8,-9,4,-8,4,-6,3"],
+[0,"","8996,4282,-52,13"],
+[0,"","8861,4519,-2,4"],
+[0,"","8858,4518,3,1"],
+[0,"","8845,4579,4,0,1,3"],
+[0,"","8669,4916,8,-6"],
+[0,"","8677,4910,-1,-2,7,-6"],
+[0,"","8150,4032,-2,11,-5,9"],
+[0,"","8143,4052,2,4,5,2"],
+[0,"","8139,4069,4,-5,7,-6,6,-6,36,7,6,0,5,-5,6,-13"],
+[0,"","8143,4064,37,8"],
+[1,"Chemin de la Croix des Rameaux","8169,4363,-25,15,-23,20,-1,1,-23,21"],
+[1,"Chemin de la Croix des Rameaux","8097,4420,-23,24,-20,26"],
+[1,"Chemin de la Croix des Rameaux","8052,4565,-2,3,0,5,2,10,5,13,4,9,-1,3,-3,5,-5,6,1,3,1,3,1,2,-2,8,-5,20"],
+[1,"Chemin de Clos Buisson","8052,4565,10,3,21,4,40,5,19,2,18,5,11,3,10,3,8,3,9,6"],
+[0,"","7499,5933,-19,-11,-18,-11,-15,-10,-17,-10,-22,-15,-20,-13,-17,-9"],
+[0,"","6616,4532,5,-4,4,-12,2,-13,2,-9,20,2,32,3,13,6,19,4,20,-1,19,4,19,-1,10,4"],
+[0,"","6697,4670,-12,-18,-15,-20,-19,-32,-35,-68,-18,-27,-21,-24,-22,-21"],
+[0,"","6496,4536,8,7,14,16,15,18"],
+[0,"","7831,4227,-36,-4,-54,5"],
+[0,"","7716,4454,-13,-22,-3,-14"],
+[0,"","7700,4440,-6,-5,-28,-9"],
+[0,"","7395,4298,1,11,4,10,14,-3,7,-4,12,-5"],
+[0,"","7377,4278,5,-18,1,-7"],
+[0,"","7311,4262,3,34,-6,6,-9,4,-13,3,-14,5,-15,11,-4,6"],
+[0,"","7268,4633,-3,13"],
+[0,"","7873,4817,-3,0"],
+[0,"","7870,4817,-7,2,-3,1,-27,-9,-8,-2"],
+[0,"","7833,4811,11,0,9,1,5,4,2,4"],
+[0,"","7804,4802,5,2,16,5"],
+[0,"","7791,4824,4,-8"],
+[0,"","7789,4877,6,4"],
+[0,"","7806,4872,21,-17"],
+[0,"","7695,4761,-2,10"],
+[0,"","7696,4773,14,5"],
+[0,"","7693,4771,3,2"],
+[0,"","7415,4782,11,4"],
+[0,"","7392,4797,-1,-4,-2,-3,4,-2,15,-7,16,-8"],
+[0,"","7345,4823,-2,-2,0,-3,3,-3,5,0"],
+[0,"","7389,4799,-2,-1,-14,-2,-5,0,-6,0"],
+[0,"","7350,4803,8,0,4,-3,0,-4"],
+[0,"","7368,4796,4,3,5,2,5,0,5,-3"],
+[0,"","7345,4823,-3,2"],
+[0,"","7351,4815,-1,4,-5,4"],
+[0,"","7350,4803,1,9,0,3"],
+[0,"","7362,4796,-9,3,-3,4"],
+[0,"","7347,4828,8,5,4,6,9,5"],
+[0,"","7273,4871,18,9"],
+[0,"","6561,4871,-9,30"],
+[0,"","6780,4860,-4,12,-10,13"],
+[0,"","6792,4881,-12,-21"],
+[0,"","7570,5116,-3,-3"],
+[0,"","7522,5242,12,5,7,2,7,0"],
+[0,"","7664,5270,-7,11,-2,0,-4,-3"],
+[0,"","7660,5269,2,1,2,0"],
+[0,"","9174,4177,-17,22"],
+[1,"Place du Four à Pain","9720,4110,2,-3,2,-4,3,-7,0,-8"],
+[0,"","9290,4034,-2,5"],
+[0,"","9688,4300,-24,-21,-1,-7,4,-3,8,-2,12,1,12,2,205,90"],
+[0,"","9569,4191,19,-19,11,-8,5,-2"],
+[0,"","9556,4205,13,-14"],
+[0,"","7590,4898,6,-4,8,-6,6,-1,6,2,5,6,1,4,-1,3,-4,0,-5,-1,-4,2,-6,5,-2,4,-4,7,-4,4,-2,5,-3,5,0,5,-4,7"],
+[0,"","7530,4872,0,7,-1,4,1,5,-3,6,-7,4"],
+[0,"","7528,4856,2,6,1,6,-1,4"],
+[0,"","7541,4848,-7,-3,-11,-6,-7,-5,-7,-6,-6,-5,-20,-21"],
+[0,"","7573,4745,-1,2,-4,5"],
+[0,"","7470,4730,9,5"],
+[0,"","7557,4664,2,2,44,42"],
+[0,"","6323,5575,4,1,11,0,6,3,2,2"],
+[0,"","6323,5575,-18,-2,-8,3"],
+[1,"Allée de l'Obiou","9843,4066,-2,0,-9,1,-7,2,-21,8"],
+[0,"","7759,5220,7,-3,6,-2,9,-3,9,-1,9,-1,10,-1"],
+[0,"","9408,6113,17,11"],
+[0,"","9307,6032,4,-11,6,-11"],
+[0,"","8674,5700,14,9,16,3,13,8"],
+[0,"","8908,5496,-4,-3,-2,0,-3,0,-3,1,-3,2,-5,3,-7,2,-12,6,-4,1,-5,2,-8,3,-10,2,-3,2,-2,3,-3,4,-5,2,-5,2,-6,3,-4,3,-5,4,-7,4,-2,11,-3,11,-2,9"],
+[0,"","8618,5370,7,0,8,0,11,-1,12,0,9,0,12,-1,8,-1,15,-2,6,0,8,1,7,3,6,5,2,4,5,7,4,7,5,6,5,4,5,2,5,1,2,-2,1,-5,3,-4,3,-5,2,-2,6,-2,16,-2"],
+[0,"","8113,5421,14,-11,10,-8,20,-11,17,-11,16,-12,18,-9,14,-9,8,-7,7,-8,6,-8,3,-3,9,-6,4,-4,1,-3,-3,-6"],
+[0,"","7854,5276,-7,-4,-6,-6,-6,-6,-6,-5,-4,-6,-1,-7,-3,-12,-2,-7,-3,-8,-7,-6"],
+[0,"","8998,5246,-7,-4,-9,0,-7,0,-9,5,-9,1,-8,3,-10,1,-24,11,-4,10,-5,9,-3,3,-13,8,-7,7,-1,9,3,8,3,6,0,3,3,3,3,10,-11,-2,5,8,3,9,-16,-6,3,15,-11,-4,-5,-4,-6,-6,-7,-5,-8,-1,-7,-2,1,7,5,11,-10,-5,-11,-4,1,6"],
+[0,"","9182,5332,-5,2,-5,1,-22,-3,-15,-5,-29,-24,-9,-5,-6,-2,-9,-3,-13,-3,-8,-3,-11,-6,-21,-15,-13,-8,-10,-7,-8,-5,-2,2,-5,2"],
+[0,"","8842,5552,5,6,10,4,17,3,8,4,7,7,2,8,0,9,-2,10,-2,6"],
+[0,"","8868,5703,18,-5"],
+[0,"","8839,5653,7,11,6,9,-4,10,0,7,6,4,12,7,2,2,0,3,-20,11"],
+[0,"","8696,5611,11,2,9,1,6,3,14,6"],
+[0,"","8942,5534,6,-5,5,-5,4,-3,2,-5,0,-6,-3,-8,-4,-6,-6,-7,-8,-8,-11,-12,-8,-8,-12,-10,-12,-9"],
+[0,"","8977,5538,-7,-2,-9,-7,10,-2,6,-3,6,-6,3,-4"],
+[1,"Chemin de Billerey","9106,5557,-10,1,-10,-1,-8,-2,-9,-4,-12,-7"],
+[0,"","9036,5583,10,8,8,4,13,1,19,4"],
+[0,"","9097,5586,-20,-3,-24,-1,-17,1,-16,-8"],
+[0,"Chemin du Mont Pellet","9078,5608,-7,8,-11,7"],
+[0,"Chemin du Mont Pellet","9106,5557,-3,15,-3,8,-3,6"],
+[1,"Allée de l'Obiou","9804,4077,-1,0"],
+[1,"Allée de l'Obiou","9758,4099,-26,-11,-5,0"],
+[0,"","9640,6093,-13,-8"],
+[0,"","9621,6105,19,-12,10,5,3,6,2,12"],
+[0,"","9554,6065,-22,2,-14,-5,-6,-7,-16,-9"],
+[0,"","9502,6184,16,-12,13,-8,14,-2,21,-11,9,-9,10,-7,17,-13,11,-8,8,-9,2,-13,4,-7,-8,-6,-10,-4,-12,-4,-11,-7,-18,-2,-14,3,-13,-20,-3,-10,3,-9,9,-10,19,-10,22,-13,20,-10,19,-9"],
+[0,"","7137,4258,6,9"],
+[0,"","7170,4266,-11,25,0,8"],
+[0,"","7668,4285,-12,18"],
+[0,"","7649,4239,-31,-16,9,14,13,10,9,12,7,14,12,12,20,14"],
+[0,"","7658,4163,-2,6,-10,-1,-12,-3,-9,-6,-12,-1,-15,-3,6,12,4,14,7,15,7,12,11,12,16,19,10,10"],
+[0,"","7967,4545,0,10,-4,6,-8,3,-4,-1,-7,-2,-5,1,-6,4,-11,10,-7,8,-5,0,-5,-2,-7,-5,-7,-8,-7,-8"],
+[0,"","7867,4608,-23,-39,18,-35"],
+[0,"","7833,4509,10,8,9,6,10,11,2,2"],
+[0,"","8039,4675,-33,-9,-32,-9,-7,8,-37,-11,-28,-7,-11,-15,-8,-10,-7,-11,-13,-21,-12,-20,26,-24,-13,-10"],
+[0,"","7642,4630,23,22,1,3,0,8,0,6,2,4,6,6,11,8,9,9,8,16,8,9,13,9,24,7,34,7,41,6,39,2,22,2,19,3"],
+[0,"","7970,4191,-7,19,5,1,26,5,11,2,14,6,19,5,14,5,12,5,16,5,9,4"],
+[0,"","8083,4218,2,11,2,11,2,8,3,6,-2,9,-3,8,-1,7,-2,2,5,2,-11,15"],
+[0,"","8083,4218,-11,13,-8,14,-6,19,-5,13,-3,0,-5,4,-4,7"],
+[0,"","8053,4277,5,1,3,2,-1,4,-3,4,-1,4"],
+[2,"Route du Saint-Eynard","6442,5507,-40,-9"],
+[0,"","6617,5534,-13,-3"],
+[0,"","9511,5949,21,12,4,8,0,8"],
+[0,"","9098,6101,6,10,8,9,5,12,-4,11,-3,5,-17,7,-14,4,-22,-2,-7,2,-5,5,-9,17"],
+[0,"","9028,6138,17,-2,17,0,24,7,24,5,6,3,15,12,12,13,16,22,7,21,19,12,19,11,37,22,26,14,23,6,22,4,36,4,24,4,27,8"],
+[0,"","8933,5964,2,15"],
+[0,"","8316,5649,3,7,-1,5,-2,5,-4,7,-6,5,-4,3,0,1,4,3,2,3,0,3,0,2,1,3,2,3,3,0,2,3,-1,4,2,4,4,7,6,7,10,8,1,6,3,3,0,4,1,6,4,3,8,4,-5,0,-6,0,-8,-2,-5,-3,-5,0,-4,-4,-4,-1,-6,1"],
+[0,"","9403,6320,20,-7,19,-3,17,-5"],
+[0,"","9287,6344,17,6,5,5,8,2,6,12"],
+[0,"layon","9263,6397,-19,9,-21,6,-19,3,-21,3,-17,4,-20,4,-28,6,-25,3,-27,2,-26,4,-19,2,-19,0,-20,1,-33,4,-32,5"],
+[0,"Chemin Saint-Germain","7270,4224,1,-18"],
+[2,"Chemin Saint-Bruno","7586,3691,-10,15,-14,20,-5,7,-14,16,-12,12,-15,12,-10,6,-15,6,-13,4,-12,6,-10,10,-20,21,-14,15,-14,14,-8,13,-9,16,-2,14,3,11,3,8,3,6,8,15,12,17,16,12,6,7,1,5,0,4"],
+[1,"Chemin de Malanot","6815,3913,-24,-6,-27,-6,-4,-1,-14,-3,-16,-1,-16,-1,-12,-1,-14,-3,-19,-7,-32,-11,-25,-14,-23,-12,-15,-8,-13,-7,-11,-6,-9,-5"],
+[0,"","8350,3874,-2,3,2,2,2,1,3,1,6,1,0,3,-3,6"],
+[0,"","8361,3885,3,-1,1,0,0,0,12,2,18,2,2,-1"],
+[0,"","8361,3885,2,-4,5,-2"],
+[0,"","8505,3850,-7,17"],
+[0,"","8471,3841,1,-3,12,-22"],
+[0,"","8267,5791,-2,-4,0,-2,-2,-4,-4,-5,-1,-2,4,-3,0,-2,1,-3,1,-1,2,-1,4,0,3,0,-3,-3,-1,-3,1,-1,4,0,4,0,1,-4,-3,-3,-2,-2,5,-1,5,0,1,-1,-1,-2,0,-2,6,1"],
+[0,"","8728,5281,24,16,10,6,14,12,11,7,12,10,7,6"],
+[0,"","8758,5355,23,14"],
+[0,"","8714,5366,6,-1,3,-4,6,1,8,-3,19,-4,2,0,-7,-11,-7,-6,-7,-8,-7,-7,-1,-6,-2,-14,1,-22,0,-14,-6,-10,8,-16,0,-6,4,-4,4,-2,12,1,19,22,13,13,8,7,12,7,15,6,13,7,18,10"],
+[0,"","8991,5242,-11,-13,-15,-12,-14,-11,6,-4,-5,-2,1,-3,-1,-2,2,-4,-2,-1,2,-4,-5,-4,5,-5,-4,-5,-7,0,-9,-4,-6,0,-7,3,-12,3,-6,0,-3,7,-3,10,-1,8,-1,10,2,0,3,7,7,6,7,-1,2,-2,8,-3,9,-5,18,-5"],
+[0,"","8834,5341,-25,-7"],
+[0,"","9583,6280,-8,40"],
+[0,"","7572,5123,0,-2,-2,-2,0,-3"],
+[0,"","7549,5128,0,-6"],
+[0,"","9263,6397,0,11,5,11,4,11,-1,8,-2,4,-5,4,-6,4"],
+[0,"","9585,4755,-89,-31,-18,25"],
+[0,"câble","7870,5604,6,3,9,3"],
+[0,"Chemin des contrebandiers","7487,5451,2,-3,10,1,13,0,12,5,5,4,14,5,16,10,12,8,7,8,8,5,11,6,13,8,9,8,7,7,15,5,7,5,5,2,7,1,8,3,9,3,11,6,10,-1,7,3,10,5,19,3,18,5,10,4,12,1,19,5,17,5,18,7,16,6,26,13"],
+[0,"","7253,4897,3,-6,2,-4,6,-8,4,-6,0,-14,3,-9,5,-5,8,-4,5,-4,8,-3,6,-4,7,-6,10,-1,10,2,12,0"],
+[0,"","6886,4852,-2,2,-3,2,-6,3,-6,4,-6,3,-6,3,-8,1,-7,-1,-4,-3,-5,-5,-14,-6,-11,-5"],
+[1,"Allée de la Passée","9288,3840,-18,8,-22,5,-11,3"],
+[1,"Allée de la Passée","9349,3815,15,12,6,12,7,15"],
+[0,"","7076,5187,1,2,10,3"],
+[0,"","7066,5130,-7,-4"],
+[0,"","6435,4076,-24,-14"],
+[0,"","6388,4116,3,-5,3,-5,2,-5,1,-5,2,-3"],
+[0,"","6361,4111,-26,-7,-6,-4,-20,-10,-14,-10,3,-3"],
+[0,"","6373,4119,-12,-8"],
+[0,"","6376,4122,-1,-3,-2,0"],
+[0,"","6361,4111,4,-7"],
+[0,"","6356,4070,2,-1,2,0,7,-1,15,6,1,-1,-24,-13,-3,0,-13,-1,-16,-8,-7,7"],
+[0,"","6329,4100,16,-18"],
+[0,"","6354,4072,2,-2"],
+[0,"","6351,4075,3,-3"],
+[0,"","6350,4077,1,-2"],
+[0,"","6346,4081,4,-4"],
+[0,"","6345,4082,1,-1"],
+[0,"","6358,4069,7,2,14,5,-2,5"],
+[0,"","6360,4069,-4,-9"],
+[0,"","6343,4059,-7,7"],
+[0,"","6217,5577,29,-22,14,-22,4,-1,38,6,26,3,15,1"],
+[0,"","6299,5564,6,1,6,2,5,2,4,4,3,2"],
+[1,"Chemin Saint-Germain","7264,4255,6,-24,-1,-2,1,-5"],
+[2,"Chemin de Rochasson","7256,4621,7,8,5,4,5,6,13,9,12,6,13,5,38,10,65,14,66,15"],
+[2,"Chemin de Rochasson","6981,4535,3,3,3,3,6,3,7,1,9,1,9,-1,10,0,11,-3,34,-5,8,-3,8,-4,14,-7,22,-13,19,-12,27,-10"],
+[2,"Chemin de Rochasson","6787,4350,6,1,5,3,2,2,2,4,2,5,2,8,4,8,5,6,3,6,3,7,3,7,5,11,5,7,3,4,5,3,11,8,11,5,31,12,23,10,13,7,20,21,16,16,4,4,3,4,2,4,2,5,2,4,1,3"],
+[0,"Chemin de Pierrache","6855,4709,14,-3,18,-4,17,-4,18,-3,19,-3,16,-3"],
+[0,"","7427,5008,9,4,5,5,2,3,0,4,-1,7,-1,6,-4,13,1,10"],
+[2,"Route de la Chartreuse","6298,4005,6,5,2,1,64,42,23,14"],
+[2,"Chemin Saint-Bruno","6702,4001,-24,-4,-23,0,-22,1,-18,2"],
+[0,"","6682,4684,15,-14,13,-13,16,-9,36,-9,24,-18,40,-67,11,-9"],
+[2,"Route de la Chartreuse","6532,4642,-7,-20,-6,-16,-8,-18,-12,-20,-9,-14,-7,-8,-8,-7,-5,-3,-6,-4,-6,-3,-8,-3,-14,-4,-12,-3,-12,-2"],
+[2,"Route de la Chartreuse","6591,4735,-8,-3,-15,-9,-6,-4,-6,-8,-5,-7,-4,-11,-9,-34,-4,-11,-2,-6"],
+[0,"","6533,4577,1,1,9,10,9,12,8,10"],
+[2,"Route de la Chartreuse","6850,4704,5,5"],
+[2,"Route du Saint-Eynard","6915,6062,1,-2,0,-3,-3,-3,-9,-4,-9,-4,-15,-8"],
+[2,"Route du Saint-Eynard","6880,6038,-17,-11,-26,-18,-22,-16,-21,-17,-35,-19,-19,-13,-56,-35,-40,-21,-31,-15,-12,-5,-15,-3,-9,-2,-16,-7,-25,-15,-18,-9,-23,-10,-20,-4,-19,-6,-21,-6,-21,-7,-23,-2,-49,4,-13,1,-13,2,-9,2,-8,3,-19,11,-3,2,-4,1,-4,0,-3,-1,-2,-3,1,-2,1,-2,2,-3,62,-47,23,-16,20,-14,17,-10,20,-7,45,-11,21,-4,20,-3,15,1,16,1,10,2,4,0,7,-1,3,-2,-1,-3,-2,-4,-4,-3,-8,-2,-29,-9,-35,-12,-34,-11,-44,-9,-47,-5,-18,-2,-16,0,-16,1,-16,3,-16,6,-8,3,-5,-2,-1,-4,3,-5,8,-6,21,-18,26,-16,34,-20,3,-2,4,-2,9,-3,32,-7,34,-7,17,-3,23,-3,25,-2,10,0,10,-2"],
+[0,"","6661,5565,4,11,4,8,6,7,10,11,13,17,11,10"],
+[0,"","6774,5602,-13,-5,-11,-2,-12,-4,-4,-3"],
+[0,"","6808,5892,9,-19,7,-3,12,-6,7,-2"],
+[1,"Allée de la Grande Vigne","8296,3990,12,5,10,3,11,-1,16,-25,15,-26,1,-6,-5,-3,-51,-21"],
+[0,"","7329,5878,-9,14,-2,27,10,17,15,11,-8,6"],
+[0,"Sentier des Crêtes","8047,6390,11,7,14,9,13,12,9,16,8,13"],
+[0,"","6539,4043,-3,-3,-1,-3,-1,-13,-4,-5,-6,-7,-2,-6,3,-6,6,-3,12,1,17,-1,6,-5,3,-7,0,-2"],
+[0,"","7761,4889,-5,-4,-6,-3,-8,-3,-8,-4,-8,-6,-8,-4,-5,-4,-6,-5,-11,-7,-5,-5,-6,-6,-6,-6,-5,-5,-8,-8"],
+[0,"","7771,4891,-6,2,-4,-4"],
+[0,"","7269,4229,-5,-2,-4,-18,-6,-7,-26,-4,-21,-13"],
+[0,"","7011,4039,-5,-3,-7,-4,-7,-5,-6,-5,-4,-6,-4,-7,-3,-6,-2,-8,-3,-6"],
+[0,"","7030,4425,22,34,2,13"],
+[0,"","9040,5046,-12,10,-2,10,-4,10,-10,10,-9,11"],
+[1,"Allée du Boutet","8974,5002,66,44,26,17,18,13"],
+[0,"","8996,5248,2,2,4,3,3,5,1,6,1,2,3,3,1,3,7,6,4,6,7,9,6,5,0,6,2,9,5,5,12,11,5,9,3,9,4,12,1,14,3,4,1,6,1,10"],
+[0,"","9125,4025,-11,18"],
+[0,"","9127,4026,-10,17"],
+[0,"","9132,4028,8,-15,-4,-3,0,-3,5,-3,5,1,1,4,-5,4,-2,0"],
+[0,"","9438,4104,18,7,31,17,15,7,9,6,4,4,1,0,6,11,1,7"],
+[0,"","9634,4123,-6,9,-11,10,-9,6,-5,6"],
+[0,"","9560,4148,24,-20,8,-6"],
+[0,"","9755,4170,-24,-14,-3,0"],
+[0,"","9387,5724,-1,3"],
+[0,"","9354,5731,4,-9,28,5,-4,10,-5,11"],
+[0,"","9441,5755,2,-6,-61,-12,-28,-6,-4,11,27,6,47,9,17,-2,13,-1"],
+[0,"","9649,5667,9,17,9,1,15,-6,3,4"],
+[0,"","9653,5655,-11,-4"],
+[0,"","9665,5645,-31,-12"],
+[0,"","9656,5653,-21,-9"],
+[0,"","9659,5650,-29,-12"],
+[0,"","9661,5648,-30,-13"],
+[0,"","9650,5658,-4,3,3,6,25,-23,-7,-2"],
+[0,"","9638,5631,-4,2,-3,2,-3,1,2,2,5,6,7,7,8,7,3,-3,3,-2,3,-3,2,-2,4,-3,2,-3,-29,-11"],
+[0,"","9611,5614,21,14"],
+[0,"","9614,5612,-3,2,-3,3,21,14,3,-3,3,-2,-21,-14"],
+[0,"","6763,4909,-4,-9,-3,-11"],
+[0,"","6552,4868,9,3,15,3,20,2,9,3,8,5,10,5,21,2,21,0,9,1,8,1,8,5"],
+[0,"","6353,4673,0,12,6,2,0,5,3,6,2,13,0,11,0,13,3,10,6,10,3,12,1,8,-1,7,-3,6,-4,6,-2,4,1,5,4,9,5,7,6,5,8,5,8,2,23,2,11,2,11,3,12,7,8,4,9,2,9,9,8,4,9,1,10,-1,11,0,11,1,8,3,13,0"],
+[0,"","6362,4698,6,5,1,2,0,2,-5,4,-2,3,-1,3,2,2,1,3,8,3,1,3,-1,2,-8,5"],
+[0,"","6286,4570,2,-3,5,-2,10,1,6,3,-1,-2,-3,-6,0,-2,7,3,4,4,2,3,5,7,5,8,4,10,5,14,7,23,7,21,0,10,2,11"],
+[0,"","9407,4351,10,2,11,5,7,2,8,-2,17,-18"],
+[0,"","9401,4357,6,-6,2,-2,12,-13,6,-7,1,-4,-8,-6"],
+[0,"","9920,4987,-105,-49"],
+[0,"","9937,4966,-52,-23,-29,-13,-19,-4,-12,3"],
+[0,"","9470,4917,-106,-32"],
+[1,"","8758,5068,-72,-32"],
+[1,"","9416,5945,11,5,9,5,10,4,8,6,4,4"],
+[1,"","9565,5894,-6,4,-6,3,-6,1,-10,-1,-7,-2,-9,-3,-6,-2,-7,-5,-6,0,-5,4,-1,3,2,7,5,8,4,7,2,5,0,4,-5,2,-11,-2,-6,-4,-7,-5,-7,-4,-6,-3,-9,-2,-6,1,-7,5,-8,7,-6,6,-5,5,-5,6,-5,6,-2,3,-2,6,-3,6,-7,2,-8,2,-5,2,1,5,5,2,10,2,11,2,10,1"],
+[0,"","9401,6396,-3,4"],
+[0,"Chemin des Malencharets","9744,6366,-32,-1,-25,-3,-13,1,-15,9,-17,18"],
+[0,"","8809,5334,-10,-2"],
+[0,"","8849,5737,-1,-8,0,-8,0,-4,-10,-14,-12,-11,-10,-11,-8,-8,-2,-5,-4,-10,1,-9"],
+[0,"Chemin de Manrèse","8748,5735,2,2,5,9,-3,3,0,9,-9,-4,-7,-1,-1,10,-13,-5,1,8,-6,0,-7,18"],
+[0,"","8638,5745,6,-6,-1,-2,-11,-1"],
+[0,"","8632,5736,-9,-1,-10,-3,-7,-5,-11,-4,-10,-2,5,-1,-6,-2,4,0,-12,-1,-13,-2,-7,-4,-5,-2,-7,0"],
+[0,"","8643,5737,5,-5,0,-2,9,-8,16,-12,1,-10,-5,-3,8,-3,-8,-1,5,-3,-6,0,-18,-14,-13,-9,-7,-6,-7,-9"],
+[0,"","8848,5302,13,7"],
+[0,"","8806,5338,4,5,2,5,2,5"],
+[0,"Chemin des Réservoirs","8321,5649,-5,0,-4,0,-21,3,-8,0,-8,1,-8,0,-8,-1,-8,-2,-8,-3,-5,-2,-4,-3,-7,-5,-5,-7,-3,-5,-3,-6,-6,-7,-9,-7,-10,-7,-15,-8,-17,-10,-8,-4,-8,-4,-41,-18,-15,-7,-15,-9,-8,-3,-6,-5,-24,-9,-24,-7,-32,-7,-6,-2,-35,-11,-7,-2,-5,-3,-9,-5,-17,-10,-33,-16,-1,0,-14,-8,-14,-9,-28,-12,-17,-5,-20,-10,-17,-7"],
+[0,"","9387,3968,-30,-10"],
+[0,"","8879,3862,9,-7,11,-2,9,3"],
+[0,"","8771,3862,-13,0,-10,8"],
+[0,"","8871,3913,13,3"],
+[0,"","8035,4264,4,-1,2,-4,-5,-4,-36,-10,-66,-16,-15,-5,-6,-5,-6,-11,-1,-7,-6,-9,-3,-6,0,-7,0,-4,-1,-7"],
+[0,"","6971,4922,4,11,5,9,3,9,1,8,3,7"],
+[0,"rampe des chasseurs","8881,6436,1,-9,9,-35,7,-16,3,-10,2,-9,2,-6,10,-11,7,-5,10,-6,10,-4,11,-5,25,-16,5,-4,6,-9,15,-18,2,-1,0,-3,-1,-4,-5,-18,-2,-8,0,-7,-4,-11,-1,-12,-7,-4,-10,-1,-9,-1,-10,2,-8,-1,-10,-2"],
+[0,"","8881,6436,-1,4,2,5,4,7"],
+[0,"","8779,5886,-5,6"],
+[0,"","9023,5708,16,-3"],
+[0,"","9205,5635,-43,59,-23,26"],
+[0,"","9111,5774,11,11,6,5,8,2,8,7,16,13"],
+[0,"","9006,6272,5,19"],
+[0,"rampe des chasseurs","9004,6273,-10,3,-12,7,-16,5,-15,5,-9,7,-4,8,2,4,5,4,8,4"],
+[0,"","8745,5558,29,-9,28,-7"],
+[0,"","8865,5508,0,-16,-4,-17,-6,-8,-6,-5,-15,1,-13,5,-13,9,-10,5,-14,1"],
+[0,"","8745,5558,15,-11,15,-16,6,-17,2,-20,1,-11,-8,-9,-7,-11,-13,-10,-3,-16,4,-15,3,-6,-2,-11"],
+[0,"Chemin de Manrèse","8717,5720,20,9,11,6"],
+[0,"Chemin de Mont Garin","8948,6194,17,-5,8,-7,12,-10,17,-15,26,-19,0,-6,4,-7,19,-5,25,-8,22,-11"],
+[0,"","9295,5565,82,40"],
+[0,"","9230,5609,-31,-9,-20,-2,-9,3,-2,6,7,5,14,3"],
+[0,"Chemin du Mont Pellet","9097,5586,-11,14,-8,8"],
+[0,"","9323,5498,-9,1,-17,4,-12,7,-7,7"],
+[0,"","9314,5499,-65,-36,-9,-1,-8,4,-2,5,1,5,14,9"],
+[0,"","9309,5460,12,-23,25,-22,11,-6,8,0,10,3"],
+[0,"","9500,5382,-3,3,-22,15"],
+[0,"","9311,5313,27,12,-1,8,1,15,7,9,11,7,1,4,-5,4,-6,4,-2,5,2,3,6,4"],
+[0,"","9338,5325,60,22"],
+[0,"","9462,5357,35,28"],
+[0,"","9399,5130,-16,6,-13,3,-10,3,-19,-2"],
+[0,"","9423,5056,-12,0,-10,5,-7,7,-1,10,-7,5,-10,3,-63,0"],
+[0,"","9279,4721,15,10,44,25"],
+[0,"","9366,4638,-40,36"],
+[0,"","9248,4514,135,67,18,-4,20,4,6,9"],
+[0,"","9694,5834,-2,7,-3,9,10,16,8,12,-1,7,-10,7"],
+[0,"","9680,5788,25,3,10,6,14,23"],
+[0,"","9069,5206,21,7,62,28,45,18"],
+[0,"","8698,4801,4,13,81,46"],
+[0,"","8183,3835,-25,63,1,12,5,3"],
+[0,"","7272,4910,25,7,7,2"],
+[0,"","6987,4966,11,3,10,1,14,2,11,2,9,5,11,6,13,6,13,7,13,6,6,5,7,6,9,4,10,4,10,4,4,3"],
+[0,"","7386,4801,3,-2,3,-2"],
+[0,"","7480,4887,5,-7,2,-9,3,-15,1,-15,-2,-17,-4,-11,-2,-11,-9,-10,-13,-12,-6,-10,-4,-10,-8,-20"],
+[0,"Chemin Louis Peyrard","6212,4846,58,-31,41,-20,44,-30,18,-10"],
+[0,"","9241,6264,-10,3,-24,4,-7,-2,-9,0,-17,5,-7,1,-6,-3,-7,-3,-10,-2,-9,0,-9,0,-11,-4,-13,-4,-11,-4,-9,-4,-12,1,-12,4,-21,5,-9,4,-15,3,-7,1"],
+[0,"layon","8933,6515,5,-3,6,0,14,-11,5,-1,9,-5,10,-2,11,0,9,-3,10,-1,5,-7,8,-5,9,-4,6,-2,8,-4,5,-3,10,-3,6,-3,13,1,8,4,7,1,21,-1,9,-2,10,-2,14,1,6,2,1,-4,0,-4,1,-3,7,-3,6,-4,2,-4,7,-3,8,-1,5,-3,4,-3,-15,-12,-7,-10,-9,-10,-3,-6,-1,-8,-4,-6"],
+[0,"corde","7573,5132,-1,-3,-2,-2"],
+[0,"","7615,5140,-15,-4,-13,-1,-6,0,-8,-3"],
+[0,"","6731,4900,4,-3,4,-3,7,-1,5,0,5,-4"],
+[0,"","6756,4889,6,-3,4,-1,11,-2,9,-2,6,0,6,1,7,1,6,5,7,3,8,1,11,0,17,-4"],
+[0,"","9293,6079,-18,26"],
+[0,"","9484,6209,2,-9,1,-8,0,-8,0,-10"],
+[1,"","6366,4495,8,5,5,5,1,2,0,3"],
+[0,"Chemin des Réservoirs","7755,5407,-19,-10"],
+[0,"Chemin des Réservoirs","7707,5354,-6,-4,-2,-2,-4,-2,-7,-2"],
+[0,"","7738,4910,-3,-3,-4,-3,-5,-5,-6,-6,-8,-7,-9,-7,-8,-5,-1,-1,-4,-3"],
+[0,"","7690,4870,-17,-8,-4,-2,-5,-6,-3,-3"],
+[0,"","7754,4886,2,3,-2,2,-2,2,-1,1,-2,3,-4,3,-2,2,-3,4,-2,4"],
+[0,"Chemin de la Batie","7819,5200,5,-6,1,2"],
+[0,"Chemin de la Croix des Rameaux","8048,4655,-5,21"],
+[0,"","6953,3971,4,2,5,4,3,3,2,2,2,3,1,4"],
+[0,"","6946,4021,5,-1,3,-1,3,-3,1,-2,1,-4,-1,-3,-2,-7,-2,-9,-1,-5,1,-4,0,-2,0,-3,0,-3,-1,-3"],
+[2,"Rue du Général de Gaulle","9782,4481,11,3,5,1,7,2,8,2,23,5"],
+[1,"Allée des Balcons","6747,4155,19,-17,17,10,46,26,19,11"],
+[1,"Allée des Fermes","6698,4127,37,21,12,7,55,30"],
+[1,"Clos de la Providence","6630,4152,21,23,18,9,12,4,32,12,26,16,16,12,20,19"],
+[1,"Rue Jules Flandrin","6532,4132,12,-6,14,4,3,3,10,11,15,6,14,3,14,0,16,-1,17,-8,33,-26"],
+[1,"","6680,4118,12,5,6,4"],
+[0,"","9010,4101,-2,1"],
+[2,"","9059,4138,-12,-4,-3,-1,-12,-7"],
+[0,"","8888,4037,-4,3,-4,3"],
+[0,"","8189,3561,20,12,7,6,118,69,30,13,48,16,9,4,4,1,4,2,23,8,13,5,40,24,13,9,28,26,27,24,20,17,15,10,29,24,8,6,13,10,5,4,11,4,3,3,1,8,7,6,9,7,27,23,11,9,37,32,21,18,2,2,12,10,22,17,38,31,7,5,13,9,4,2,12,6,105,58,1,3"],
+[0,"","8792,3963,-5,3,-5,2"],
+[0,"","8685,3872,-2,1,-6,3,-2,2"],
+[2,"","9131,4181,26,18,2,1"],
+[0,"","9024,4094,-8,1,-6,6"],
+[0,"","7615,5033,44,40"],
+[0,"","7166,4823,1,-8,-13,-10,-4,-8,1,-2,-5,-7,-2,-5,-8,-9,-3,-7,-2,-6,-4,-6,-4,-7,-3,-1,-6,-12"],
+[0,"","7392,5914,14,0,-6,11"],
+[0,"","8040,4573,6,16,2,9,3,10,-1,4,-2,6"],
+[0,"","8045,4563,-5,5,0,5"],
+[0,"","7827,4855,-6,-3,-4,-5"],
+[0,"","7114,4735,-1,-16,11,-10,12,-6,31,-1,24,7,8,0,15,-16"],
+[0,"Chemin du Bourcet","7434,4304,-1,3"],
+[0,"","9810,6111,-10,-7,-28,-5,-16,1,-1,4,5,4"],
+[0,"Chemin de l'Église","6226,3940,4,2,14,10,50,16,44,21,7,7"],
+[0,"","9275,4283,12,6"],
+[0,"","9271,4286,4,-3,2,-5,2,-4,-11,-3,-15,-8,-7,-5"],
+[0,"","9020,4125,-5,-6,-15,-8"],
+[0,"","9074,4140,11,7,19,10,2,3,25,21"],
+[0,"","9491,4886,102,31"],
+[0,"","9455,4941,113,30"],
+[0,"","9516,4987,-6,-5,-65,-18"],
+[0,"","9297,4923,-1,-10,8,-8,9,-3,6,0,12,4"],
+[1,"Chemin des Arriots","9468,4919,-1,2,-9,15,-3,5,-7,15,-3,8,-8,25,-6,16,-2,6,-1,5,-4,16"],
+[0,"","9354,5022,43,2,7,-6,11,-5,10,-3,4,1"],
+[0,"","9431,5005,-78,-18,0,-6"],
+[1,"Chemin du Boutet","8795,5044,3,0,4,-1,27,15,13,11,23,22,16,14,18,11,13,4,12,-1"],
+[0,"","6780,4378,0,-4"],
+[0,"","8944,5610,26,-12,26,-9"],
+[0,"","9300,4307,16,3,32,15,37,17,10,7,6,8"],
+[0,"","8406,3687,6,3,4,2,4,0,5,2,29,11,20,10,21,14,12,10,18,16,11,9,82,69,43,35,0,2,3,3,8,6,3,-1"],
+[0,"","8935,5033,-1,4,0,4,2,8,1,6,0,5,-1,5,-3,5,-4,4,-6,5,-7,3,-9,2"],
+[0,"Chemin des Combes","8881,5038,-8,6"],
+[0,"Chemin des Combes","8830,5054,-1,4"],
+[0,"","8751,5165,-16,-2,-9,0,-8,1,-10,4,-7,4,-5,4,-6,5,-5,7,-2,7,-1,8,0,6,0,7,0,9,-1,9,-2,9,-1,6"],
+[2,"","8941,4074,13,6"],
+[2,"","9006,4104,20,12"],
+[2,"","8954,4080,23,8,27,15,2,1"],
+[0,"","9037,4123,5,0,4,2,5,2,23,13"],
+[2,"","9334,4324,6,3"],
+[2,"","9295,4304,5,3"],
+[0,"","9340,4327,-9,1,-27,-14,-9,-5,0,-5"],
+[2,"","9282,4294,13,10"],
+[1,"Chemin de Plate Rousset","9778,5314,-43,-12,1,-8,27,-31"],
+[1,"Chemin des Arriots","9715,4465,-1,5,-23,57,-1,2,-2,10"],
+[1,"Chemin Saint-Martin","9667,4090,-94,-38"],
+[2,"Chemin de Rochasson","9037,4123,-5,3"],
+[2,"","9032,4126,-9,-6"],
+[2,"","9026,4116,11,7"],
+[2,"Chemin de Rochasson","8953,4211,15,-14,21,-26,4,-5,21,-29"],
+[2,"Chemin de l'Église","8740,4676,-2,-1,-2,-2"],
+[2,"Route de la Chartreuse","6412,4517,-20,-3,-12,-4,-13,-4,-17,-5,-10,-2,-10,-2,-20,-2,-23,-1,-22,0,-14,1,-8,1,-20,2,-21,2,-21,4,-13,4,-10,5,-13,8,-18,15,-12,11,-25,25,-13,11,-13,11,-12,7,-12,7,-11,4,-13,4,-12,2,-12,2,-33,2,-16,2,-6,1,-7,3,-6,2,-7,3,-11,8,-7,8,-6,7,-1,4,-2,4,-2,8,-1,9,0,22,-1,14,-1,4,-2,8"],
+[1,"Chemin de Malacare","7809,4215,-23,-5"],
+[1,"Chemin de Malacare","7829,4220,-5,-1,-15,-4"],
+[0,"Chemin des Réservoirs","9744,6366,-2,-5,-6,-7,-8,-11,-5,-6,-8,-7,-16,-13,-31,-25,-12,-10,-27,-22,-10,-7,-14,-9,-14,-8,-21,-12,-43,-23,-18,-13,-7,-4,-15,-10,-20,-15,-18,-13"],
+[0,"Chemin des Réservoirs","9957,6646,-24,-30,-15,-16,-8,-7,2,-7,6,-9,4,-12,-1,-11,-5,-13,-7,-19,-1,-8,6,-22,2,-14,-3,-10,-7,-5,-6,-5,-9,-5,-18,-3,-45,-3,-6,-1,-23,-4,-18,-7,-14,-9,-7,-8,-5,-7,-4,-6,-3,-7,-2,-7,0,-11,-1,-7,-1,-7"],
+[1,"Chemin Saint-Martin","9334,4254,43,21,40,21,17,9"],
+[1,"Chemin Saint-Martin","9434,4278,-7,7,-10,11"],
+[1,"","9735,5302,-14,0,-33,19,-13,-2,-8,2,5,7"],
+[0,"","7840,4235,-1,3"],
+[0,"","7839,4238,-1,4,1,1"],
+[0,"","7839,4243,0,1,16,13,5,10"],
+[0,"","7870,4267,33,9,26,7,46,12,9,2,14,3,5,-8"],
+[0,"","8163,4352,-15,11,-15,10,-7,8,-14,4,-18,-3,-30,-9,-25,-8,-10,-7,-15,-3"],
+[0,"","6562,4719,-16,8"],
+[2,"Chemin Saint-Bruno","6345,3996,-10,0,-12,0,-11,0,-8,3,-5,4,-1,2"],
+[0,"","6574,4063,3,2"],
+[0,"","6577,4065,7,6"],
+[0,"","6615,4000,-6,-2,-4,1,-4,0"],
+[0,"","6601,3999,-6,1,-4,-2"],
+[0,"","7903,4276,-1,1,13,3"],
+[0,"","7929,4283,0,1,-14,-4"],
+[0,"","7844,4267,9,6,2,4"],
+[0,"","7855,4277,1,6"],
+[0,"","7837,4260,7,7"],
+[0,"","6996,4602,3,-3,31,14,19,5,24,6"],
+[0,"","7082,4798,-11,0,4,4"],
+[0,"","7090,4801,3,-6"],
+[0,"","6733,4806,10,9,7,9"],
+[0,"","6546,4727,-17,5,-7,5,0,6,5,5,11,6,14,6,24,6,15,1,15,2"],
+[0,"","6733,4806,19,7"],
+[0,"","6546,4727,-39,-21"],
+[0,"","6560,4610,6,-3,3,-7"],
+[0,"","6473,4481,30,9,27,5"],
+[1,"Allée de la Passée","9248,3853,8,15,-9,16"],
+[1,"Allée de la Passée","9390,3908,-13,21"],
+[1,"Allée de la Passée","9288,3840,34,10"],
+[0,"","6727,5585,1,-13"]
+]
+};
+</script>
+<script>
+(() => {
+"use strict";
+const STAT = { afaire: "À faire", repasser: "À repasser", valide: "Validée" };
+const POLL_MS = 15000;
+const $ = (s) => document.querySelector(s);
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const norm = (s) => String(s).normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+const store = {
+  get(k, d) { try { const v = localStorage.getItem("s2." + k); return v == null ? d : JSON.parse(v); } catch { return d; } },
+  set(k, v) { try { localStorage.setItem("s2." + k, JSON.stringify(v)); } catch {} },
+};
+
+// ---------- Référentiel d'adresses ----------
+// Les tracés de rues sont stockés en écarts entiers (1e-5 degré) pour alléger le fichier.
+{
+  const [bLon, bLat, q] = DATA.roadBase;
+  DATA.roads = DATA.roads.map(([k, name, s]) => {
+    const v = s.split(",").map(Number), pts = [];
+    let x = 0, y = 0;
+    for (let i = 0; i < v.length; i += 2) { x += v[i]; y += v[i + 1]; pts.push([bLon + x / q, bLat + y / q]); }
+    return [k, name, pts];
+  });
+}
+const ADDRS = DATA.addrs.map(([id, num, s, c, lon, lat]) => ({
+  id, num, street: DATA.streets[s], commune: DATA.communes[c], lon, lat,
+}));
+let extras = [];
+const byId = new Map(ADDRS.map((a) => [a.id, a]));
+const allAddrs = () => ADDRS.concat(extras);
+const label = (a) => (a.num ? a.num + " " : "") + a.street;
+
+// ---------- État partagé (copie locale de la feuille Google) ----------
+const online = typeof google !== "undefined" && google.script && google.script.run;
+let readOnly = !online, version = null, lastSync = 0, writes = 0, writeSeq = 0;
+let myName = store.get("prenom", ""), code = store.get("code", "");
+const suivi = new Map();      // adresse -> {statut, nom, le}
+let notes = [];               // [{id, adresse, texte, nom, le}]
+let hist = [];                // 300 derniers
+const statusOf = (id) => suivi.get(id)?.statut || "afaire";
+const whoName = (nom) => nom || "Quelqu'un";
+const initials = (n) => n.split(/[\s-]+/).filter(Boolean).slice(0, 2).map((w) => w[0].toUpperCase()).join("");
+const fmt = new Intl.DateTimeFormat("fr-FR", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
+const when = (t) => (t ? fmt.format(new Date(t)) : "");
+function ago(t) {
+  const m = Math.round((Date.now() - t) / 60000);
+  if (m < 1) return "à l'instant";
+  if (m < 60) return `il y a ${m} min`;
+  if (m < 60 * 20) return `il y a ${Math.floor(m / 60)} h`;
+  return when(t);
+}
+
+// ---------- Appels au serveur Apps Script ----------
+const call = (fn, ...args) => new Promise((res, rej) =>
+  google.script.run.withSuccessHandler(res).withFailureHandler(rej)[fn](code, ...args));
+
+function applyState(s) {
+  lastSync = Date.now(); renderSync();
+  if (!s || s.same) return;
+  version = s.version;
+  suivi.clear(); for (const r of s.suivi) suivi.set(r.adresse, r);
+  notes = s.notes; hist = s.hist;
+  for (const e of extras) byId.delete(e.id);
+  extras = s.ajouts.map((x) => ({ id: x.id, num: x.num, street: x.rue, commune: DATA.commune, extra: true, lon: null, lat: null }));
+  for (const e of extras) byId.set(e.id, e);
+  schedule();
+}
+function onError(err) {
+  const msg = String(err?.message || err);
+  if (msg.includes("CODE_ACCES")) { askCode(); return; }
+  lastSync = 0; renderSync(true);
+  toast(msg.includes("auteur") ? "Seul l'auteur peut supprimer cette note." : "Pas de réseau : la saisie n'a pas été enregistrée. Réessayez.");
+}
+let polling = false;
+async function poll() {
+  if (!online || polling || writes || document.hidden) return;
+  polling = true; const seq = writeSeq;
+  try { const s = await call("getState", version); if (seq === writeSeq) applyState(s); }
+  catch (e) { const m = String(e?.message || e); if (m.includes("CODE_ACCES")) askCode(); else { lastSync = 0; renderSync(true); } }
+  finally { polling = false; }
+}
+async function send(fn, ...args) {
+  writes++; writeSeq++;
+  try { applyState(await call(fn, ...args)); return true; }
+  catch (e) { onError(e); version = null; return false; }
+  finally { writes--; if (!writes) setTimeout(poll, 50); }
+}
+function renderSync(off) {
+  const el = $("#sync");
+  if (!online) { el.className = "sync off"; el.textContent = "Aperçu hors ligne"; return; }
+  const bad = off || !lastSync || Date.now() - lastSync > POLL_MS * 3;
+  el.className = "sync" + (bad ? " off" : "");
+  el.textContent = bad ? "Hors ligne : les passages des autres ne s'affichent plus" : "À jour · " + new Intl.DateTimeFormat("fr-FR", { hour: "2-digit", minute: "2-digit", second: "2-digit" }).format(new Date(lastSync));
+}
+
+// ---------- Rendu groupé ----------
+let raf = 0;
+function schedule() { if (!raf) raf = requestAnimationFrame(() => { raf = 0; renderAll(); }); }
+function renderAll() { renderCounts(); renderList(); renderMapStatus(); renderActivity(); if (openId && openId !== "__new") renderSheet(); }
+
+function renderCounts() {
+  const all = allAddrs(); let a = 0, d = 0;
+  for (const x of all) { const s = statusOf(x.id); if (s === "valide") d++; else if (s === "repasser") a++; }
+  $("#nTodo").textContent = all.length - a - d; $("#nAgain").textContent = a; $("#nDone").textContent = d;
+  $("#barDone").style.width = (100 * d / all.length) + "%"; $("#barAgain").style.width = (100 * a / all.length) + "%";
+}
+
+// ---------- Liste ----------
+let filter = "tous", query = "";
+const open = new Set(store.get("open", []));
+function notesFor(id) { return notes.filter((n) => n.adresse === id).sort((a, b) => a.le - b.le); }
+function renderList() {
+  const q = norm(query.trim());
+  const groups = new Map();
+  for (const a of allAddrs()) {
+    const st = statusOf(a.id);
+    const ns = notesFor(a.id);
+    if (filter === "notes" ? !ns.length : filter !== "tous" && st !== filter) continue;
+    if (q && !norm(label(a) + " " + a.commune + " " + ns.map((n) => n.texte).join(" ")).includes(q)) continue;
+    if (!groups.has(a.street)) groups.set(a.street, []);
+    groups.get(a.street).push({ a, st, ns });
+  }
+  const order = DATA.streets.concat([...new Set(extras.map((e) => e.street))].filter((s) => !DATA.streets.includes(s)));
+  const force = filter !== "tous" || q;
+  let html = "";
+  for (const street of order) {
+    const rows = groups.get(street); if (!rows) continue;
+    const all = allAddrs().filter((a) => a.street === street);
+    const d = all.filter((a) => statusOf(a.id) === "valide").length, r = all.filter((a) => statusOf(a.id) === "repasser").length;
+    const isOpen = force || open.has(street);
+    html += `<div class="street"><button type="button" data-street="${esc(street)}" aria-expanded="${isOpen}">
+      <h2>${esc(street)}</h2><span class="tally">${d}/${all.length} validées${r ? ` · ${r} à repasser` : ""}</span>
+      <span class="mini bar"><i class="b-done" style="width:${100 * d / all.length}%"></i><i class="b-again" style="width:${100 * r / all.length}%"></i></span></button>`;
+    if (isOpen) {
+      html += "<ul>";
+      for (const { a, st, ns } of rows) {
+        const s = suivi.get(a.id);
+        const who = s && st !== "afaire" ? `<span class="ini">${esc(initials(whoName(s.nom)))}</span>` : "";
+        const last = ns[ns.length - 1];
+        const meta = [a.commune !== DATA.commune ? esc(a.commune) : "", last ? `<span class="nt">${esc(last.texte)}</span>` : "", a.extra ? "ajoutée à la main" : ""].filter(Boolean).join(" · ");
+        html += `<li><button type="button" class="addr" data-id="${esc(a.id)}"><span class="num">${esc(a.num || "s/n")}</span>
+          <span class="meta">${meta}</span><span class="pill ${st}">${STAT[st]}${who}</span></button></li>`;
+      }
+      html += "</ul>";
+    }
+    html += "</div>";
+  }
+  $("#streets").innerHTML = html || `<p class="empty">Aucune adresse ne correspond à ce filtre.</p>`;
+}
+$("#streets").addEventListener("click", (e) => {
+  const b = e.target.closest("button"); if (!b) return;
+  if (b.dataset.id) return openSheet(b.dataset.id);
+  const s = b.dataset.street; if (!s || filter !== "tous" || query.trim()) return;
+  open.has(s) ? open.delete(s) : open.add(s); store.set("open", [...open]); renderList();
+});
+$("#filters").addEventListener("click", (e) => {
+  const b = e.target.closest("[data-f]"); if (!b) return;
+  filter = b.dataset.f;
+  for (const c of document.querySelectorAll("#filters .chip")) c.setAttribute("aria-pressed", c === b);
+  renderList();
+});
+$("#q").addEventListener("input", (e) => { query = e.target.value; renderList(); });
+
+// ---------- Carte ----------
+const SVGNS = "http:\/\/www.w3.org/2000/svg"; // écrit avec \/ : Google supprime tout ce qui suit // dans le code
+const [lon0, lat0] = DATA.center, kx = Math.cos(lat0 * Math.PI / 180) * 111320, ky = 110540;
+const P = (lon, lat) => [(lon - lon0) * kx, (lat0 - lat) * ky];
+const svg = $("#map");
+const pathD = (pts, close) => pts.map((p, i) => { const [x, y] = P(p[0], p[1]); return (i ? "L" : "M") + x.toFixed(1) + " " + y.toFixed(1); }).join("") + (close ? "Z" : "");
+const polyXY = DATA.poly.map((p) => P(p[0], p[1]));
+const box = polyXY.reduce((b, [x, y]) => [Math.min(b[0], x), Math.min(b[1], y), Math.max(b[2], x), Math.max(b[3], y)], [1e9, 1e9, -1e9, -1e9]);
+let vb = null;
+const circles = new Map();
+const labels = [];
+function buildMap() {
+  const big = `M${box[0] - 5000} ${box[1] - 5000}H${box[2] + 5000}V${box[3] + 5000}H${box[0] - 5000}Z`;
+  const roadsBy = ["", "", ""]; let edge = "";
+  for (const [k, , pts] of DATA.roads) { const d = pathD(pts); roadsBy[k] += d; if (k) edge += d; }
+  // Une étiquette par rue nommée, sur son tronçon le plus long, écrite de gauche à droite.
+  const best = new Map();
+  for (const [k, name, pts] of DATA.roads) {
+    if (!k || !name || pts.length < 2) continue;
+    const xy = pts.map((p) => P(p[0], p[1]));
+    let len = 0; for (let i = 1; i < xy.length; i++) len += Math.hypot(xy[i][0] - xy[i - 1][0], xy[i][1] - xy[i - 1][1]);
+    if (!best.has(name) || best.get(name).len < len) best.set(name, { len, xy });
+  }
+  let defs = "", txt = "", n = 0;
+  for (const [name, { len, xy }] of best) {
+    if (len < 60) continue;
+    const pts = xy[0][0] > xy[xy.length - 1][0] ? xy.slice().reverse() : xy;
+    defs += `<path id="lp${n}" d="${pts.map((p, i) => (i ? "L" : "M") + p[0].toFixed(1) + " " + p[1].toFixed(1)).join("")}"/>`;
+    txt += `<text class="lbl" data-len="${len}"><textPath href="#lp${n}" startOffset="50%" text-anchor="middle" dominant-baseline="middle">${esc(name)}</textPath></text>`;
+    n++;
+  }
+  svg.innerHTML = `<defs>${defs}</defs><path class="r0" d="${roadsBy[0]}"/>
+    <path class="r-edge" style="stroke-width:9.5" d="${edge}"/><path class="r1" d="${roadsBy[1]}"/><path class="r2" d="${roadsBy[2]}"/>
+    <path class="mask" d="${big}${pathD(DATA.poly, true)}"/><path class="zone" d="${pathD(DATA.poly, true)}"/>
+    <g id="labels">${txt}</g><g id="pts"></g>`;
+  const g = svg.querySelector("#pts");
+  for (const a of ADDRS) {
+    const c = document.createElementNS(SVGNS, "circle");
+    const [x, y] = P(a.lon, a.lat);
+    c.setAttribute("cx", x.toFixed(1)); c.setAttribute("cy", y.toFixed(1)); c.dataset.id = a.id;
+    const t = document.createElementNS(SVGNS, "title"); t.textContent = label(a); c.appendChild(t);
+    g.appendChild(c); circles.set(a.id, c);
+  }
+  labels.push(...svg.querySelectorAll(".lbl"));
+  fit();
+}
+function fit() { const m = 40; vb = [box[0] - m, box[1] - m, box[2] - box[0] + 2 * m, box[3] - box[1] + 2 * m]; applyVB(); }
+function pxPerUnit() { const r = svg.getBoundingClientRect(); return r.width ? Math.min(r.width / vb[2], r.height / vb[3]) : 1; }
+function applyVB() {
+  if (!vb) return;
+  svg.setAttribute("viewBox", vb.map((v) => v.toFixed(2)).join(" "));
+  const k = pxPerUnit();
+  const r = Math.max(4, Math.min(9, 2.2 + k * 4)) / k;
+  for (const c of circles.values()) { c.setAttribute("r", r.toFixed(2)); c.setAttribute("stroke-width", (1.6 / k).toFixed(2)); }
+  const fs = 11 / k;
+  for (const t of labels) { t.style.fontSize = fs + "px"; t.style.strokeWidth = (3 / k) + "px"; t.style.display = (k < 0.9 && +t.dataset.len < 250) || k < 0.45 ? "none" : ""; }
+}
+function renderMapStatus() {
+  for (const [id, c] of circles) c.setAttribute("class", statusOf(id) + (id === openId ? " sel" : ""));
+}
+function zoomAt(f, cx, cy) {
+  const nw = Math.min(6000, Math.max(60, vb[2] / f)), s = nw / vb[2];
+  vb = [cx - (cx - vb[0]) * s, cy - (cy - vb[1]) * s, nw, vb[3] * s]; applyVB();
+}
+function toUser(clientX, clientY) {
+  const r = svg.getBoundingClientRect(), k = pxPerUnit();
+  const ox = (r.width - vb[2] * k) / 2, oy = (r.height - vb[3] * k) / 2;
+  return [vb[0] + (clientX - r.left - ox) / k, vb[1] + (clientY - r.top - oy) / k];
+}
+const ptrs = new Map(); let moved = 0, pinch = null;
+svg.addEventListener("pointerdown", (e) => { svg.setPointerCapture(e.pointerId); ptrs.set(e.pointerId, [e.clientX, e.clientY]); moved = 0; if (ptrs.size === 2) { const [a, b] = [...ptrs.values()]; pinch = Math.hypot(a[0] - b[0], a[1] - b[1]); } });
+svg.addEventListener("pointermove", (e) => {
+  if (!ptrs.has(e.pointerId)) return;
+  const prev = ptrs.get(e.pointerId); ptrs.set(e.pointerId, [e.clientX, e.clientY]);
+  if (ptrs.size === 1) {
+    const k = pxPerUnit(), dx = e.clientX - prev[0], dy = e.clientY - prev[1];
+    moved += Math.abs(dx) + Math.abs(dy); vb[0] -= dx / k; vb[1] -= dy / k; applyVB();
+  } else if (ptrs.size === 2) {
+    const [a, b] = [...ptrs.values()], d = Math.hypot(a[0] - b[0], a[1] - b[1]);
+    const [cx, cy] = toUser((a[0] + b[0]) / 2, (a[1] + b[1]) / 2);
+    if (pinch) zoomAt(d / pinch, cx, cy); pinch = d; moved = 99;
+  }
+});
+const endPtr = (e) => {
+  const tap = ptrs.size === 1 && moved < 8; ptrs.delete(e.pointerId); if (ptrs.size < 2) pinch = null;
+  if (tap && e.type === "pointerup") {
+    const t = document.elementFromPoint(e.clientX, e.clientY);
+    if (t && t.tagName === "circle" && t.dataset.id) openSheet(t.dataset.id);
+  }
+};
+svg.addEventListener("pointerup", endPtr); svg.addEventListener("pointercancel", endPtr);
+svg.addEventListener("wheel", (e) => { e.preventDefault(); const [x, y] = toUser(e.clientX, e.clientY); zoomAt(e.deltaY < 0 ? 1.25 : 0.8, x, y); }, { passive: false });
+const center = () => [vb[0] + vb[2] / 2, vb[1] + vb[3] / 2];
+$("#zin").onclick = () => zoomAt(1.6, ...center());
+$("#zout").onclick = () => zoomAt(1 / 1.6, ...center());
+$("#zfit").onclick = fit;
+window.addEventListener("resize", applyVB);
+function focusOnMap(id) {
+  const a = byId.get(id); if (!a || a.lon == null) return;
+  closeSheet(); showTab("mapView");
+  const [x, y] = P(a.lon, a.lat); vb = [x - 120, y - 160, 240, 320]; applyVB();
+  for (const [cid, c] of circles) c.classList.toggle("sel", cid === id);
+}
+
+// ---------- Activité ----------
+let teamFilter = null;
+function renderActivity() {
+  const per = new Map();
+  const bump = (nom, key) => { const k = nom || "?"; if (!per.has(k)) per.set(k, { valide: 0, repasser: 0, actions: 0 }); per.get(k)[key]++; };
+  for (const s of suivi.values()) if (s.statut === "valide" || s.statut === "repasser") bump(s.nom, s.statut);
+  for (const h of hist) bump(h.nom, "actions");
+  const team = [...per.entries()].sort((a, b) => b[1].valide - a[1].valide);
+  $("#team").innerHTML = team.length ? team.map(([k, m]) => `<button type="button" class="member" data-k="${esc(k)}" aria-pressed="${teamFilter === k}">
+      <span class="nm">${esc(whoName(k === "?" ? "" : k))}</span>
+      <span class="st"><b>${m.valide}</b> validée${m.valide > 1 ? "s" : ""} · <em>${m.repasser}</em> à repasser</span></button>`).join("")
+    : `<p class="empty">Personne n'a encore rien saisi. Les vendeurs apparaîtront ici dès leur premier passage.</p>`;
+  const items = hist.filter((h) => !teamFilter || (h.nom || "?") === teamFilter);
+  $("#feedTitle").textContent = teamFilter ? `Passages de ${whoName(teamFilter === "?" ? "" : teamFilter)}` : "Derniers passages";
+  $("#feed").innerHTML = items.length ? items.slice(0, 150).map((h) => {
+    const a = byId.get(h.adresse); const where = a ? label(a) : "Adresse supprimée";
+    let what, dot = "afaire";
+    if (h.action === "statut") { what = `${esc(STAT[h.de] || "À faire")} → <b>${esc(STAT[h.vers] || "")}</b>`; dot = h.vers || "afaire"; }
+    else if (h.action === "note") what = `a ajouté une note <q>${esc(h.texte)}</q>`;
+    else if (h.action === "note-suppr") what = "a supprimé une note";
+    else what = "a ajouté l'adresse";
+    return `<li><span class="dot ${dot}"></span><span class="what">${esc(whoName(h.nom))} · ${what} · <button type="button" data-id="${esc(h.adresse)}">${esc(where)}</button></span><span class="when">${ago(h.le)}</span></li>`;
+  }).join("") : `<li class="empty">Aucun passage enregistré pour l'instant.</li>`;
+}
+$("#team").addEventListener("click", (e) => { const b = e.target.closest(".member"); if (!b) return; teamFilter = teamFilter === b.dataset.k ? null : b.dataset.k; renderActivity(); });
+$("#feed").addEventListener("click", (e) => { const b = e.target.closest("button[data-id]"); if (b && byId.has(b.dataset.id)) openSheet(b.dataset.id); });
+
+// ---------- Fiche adresse ----------
+// La fiche se ferme par ×, par « Fermer », en touchant le fond, avec Échap, ou avec le bouton retour du téléphone.
+let openId = null, addrHist = [], sheetInHistory = false;
+function showSheet() {
+  $("#scrim").hidden = false; $("#sheet").hidden = false;
+  if (!sheetInHistory) { try { history.pushState({ fiche: 1 }, ""); sheetInHistory = true; } catch {} }
+}
+function closeSheet(fromBack) {
+  if (!openId && $("#sheet").hidden) return;
+  openId = null; addrHist = [];
+  $("#scrim").hidden = true; $("#sheet").hidden = true; $("#sheet").innerHTML = "";
+  renderMapStatus();
+  if (sheetInHistory) { sheetInHistory = false; if (fromBack !== true) { try { history.back(); } catch {} } }
+}
+window.addEventListener("popstate", () => { if (sheetInHistory) closeSheet(true); });
+function openSheet(id) {
+  openId = id; addrHist = []; showSheet(); renderSheet(); renderMapStatus();
+  loadAddrHist(id);
+  $("#sheet").scrollTop = 0;
+}
+async function loadAddrHist(id) {
+  if (!online || id.startsWith("__")) return;
+  try { const h = await call("getAddrHist", id); if (openId === id) { addrHist = h; renderSheet(); } } catch {}
+}
+$("#scrim").addEventListener("click", () => closeSheet());
+document.addEventListener("keydown", (e) => { if (e.key === "Escape" && openId) closeSheet(); });
+function renderSheet() {
+  const a = byId.get(openId); if (!a) return closeSheet();
+  const st = statusOf(a.id), s = suivi.get(a.id), ns = notesFor(a.id);
+  const draft = $("#noteTx")?.value ?? "";
+  const dis = readOnly ? "disabled" : "";
+  const by = s ? `${st === "afaire" ? "Remise à faire" : STAT[st]} par <b>${esc(whoName(s.nom))}</b>, ${esc(when(s.le))}` : "Personne n'est encore passé.";
+  const maps = a.lon != null ? `https:\/\/www.google.com/maps/dir/?api=1&destination=${a.lat},${a.lon}` : `https:\/\/www.google.com/maps/search/?api=1&query=${encodeURIComponent(label(a) + ", " + a.commune)}`;
+  const scroll = $("#sheet").scrollTop;
+  $("#sheet").innerHTML = `<div class="grab"></div>
+    <div class="sh-head"><div><h2 id="shTitle">${esc(label(a))}</h2><p>${esc(a.commune)}${a.extra ? " · ajoutée à la main" : ""}</p></div>
+      <button class="close" type="button" data-act="close" aria-label="Fermer la fiche">×</button></div>
+    <div class="status3" role="group" aria-label="Statut">
+      ${["afaire", "repasser", "valide"].map((k) => `<button type="button" class="${k}" data-st="${k}" aria-pressed="${st === k}" ${dis}><span class="dot ${k}"></span>${STAT[k]}</button>`).join("")}
+    </div>
+    <p class="byline">${by}</p>
+    <div class="sec"><h3>Notes</h3>
+      ${ns.length ? `<ul class="notes">${ns.map((n) => `<li><span class="tx">${esc(n.texte)}</span><span class="by"><span>${esc(whoName(n.nom))} · ${esc(when(n.le))}</span>${
+        !readOnly && myName && n.nom === myName ? `<button type="button" data-del="${esc(n.id)}">Supprimer</button>` : ""}</span></li>`).join("")}</ul>` : ""}
+      <form class="noteform" id="noteForm"><textarea id="noteTx" maxlength="500" placeholder="Code d'accès, date de repasse souhaitée, interphone…" ${dis}>${esc(draft)}</textarea>
+      <button class="btn" type="submit" ${dis}>Ajouter la note</button></form>
+    </div>
+    <div class="row"><a class="btn ghost" href="${maps}" target="_blank" rel="noopener">Itinéraire</a>${a.lon != null ? `<button class="btn ghost" type="button" data-act="map">Voir sur la carte</button>` : ""}</div>
+    <details ${store.get("histOpen", false) ? "open" : ""} id="histBox"><summary>Historique de l'adresse</summary>
+      <ul class="hist">${addrHist.length ? addrHist.map((h) => `<li>${esc(whoName(h.nom))} : ${
+        h.action === "statut" ? `${esc(STAT[h.de] || "À faire")} → ${esc(STAT[h.vers] || "")}` : h.action === "note" ? `note « ${esc(h.texte)} »` : h.action === "note-suppr" ? "note supprimée" : "adresse ajoutée"
+      } <span>· ${esc(when(h.le))}</span></li>`).join("") : "<li><span>Aucun changement enregistré.</span></li>"}</ul></details>
+    <button class="btn ghost" type="button" data-act="close">Fermer</button>`;
+  $("#sheet").scrollTop = scroll;
+  $("#histBox").addEventListener("toggle", (e) => store.set("histOpen", e.target.open));
+}
+$("#sheet").addEventListener("click", (e) => {
+  const b = e.target.closest("button"); if (!b || b.disabled) return;
+  if (b.dataset.act === "close") closeSheet();
+  else if (b.dataset.act === "map") focusOnMap(openId);
+  else if (b.dataset.st) setStatus(openId, b.dataset.st);
+  else if (b.dataset.del) delNote(b.dataset.del);
+});
+$("#sheet").addEventListener("submit", (e) => {
+  e.preventDefault();
+  if (e.target.id === "noteForm") { const t = $("#noteTx").value.trim(); if (t) addNote(openId, t); }
+  if (e.target.id === "extraForm") addExtra();
+});
+
+// ---------- Écritures (affichées tout de suite, confirmées par la feuille) ----------
+function toast(msg) { const t = $("#toast"); t.textContent = msg; t.hidden = false; clearTimeout(toast.t); toast.t = setTimeout(() => (t.hidden = true), 2600); }
+function canWrite() {
+  if (readOnly) { toast("Ouvrez la page par le lien de l'application pour saisir."); return false; }
+  if (!myName) { $("#namePrompt").hidden = false; $("#nameInput").focus(); toast("Indiquez d'abord votre prénom en haut de l'écran."); return false; }
+  return true;
+}
+async function setStatus(id, vers) {
+  if (!canWrite()) return;
+  const a = byId.get(id); if (statusOf(id) === vers) return;
+  suivi.set(id, { adresse: id, statut: vers, nom: myName, le: Date.now() }); schedule();
+  if (await send("setStatus", id, label(a), vers, myName)) { toast(`${STAT[vers]} : ${label(a)}`); loadAddrHist(id); }
+}
+async function addNote(id, texte) {
+  if (!canWrite()) return;
+  notes = notes.concat({ id: "tmp", adresse: id, texte, nom: myName, le: Date.now() });
+  $("#noteTx").value = ""; schedule();
+  if (await send("addNote", id, label(byId.get(id)), texte, myName)) loadAddrHist(id);
+  else if (openId === id) { const t = $("#noteTx"); if (t && !t.value) t.value = texte; }
+}
+async function delNote(nid) {
+  const n = notes.find((x) => x.id === nid); if (!n || !canWrite()) return;
+  notes = notes.filter((x) => x.id !== nid); schedule();
+  if (await send("delNote", nid, myName)) loadAddrHist(n.adresse);
+}
+$("#addAddr").onclick = () => {
+  if (!canWrite()) return;
+  openId = "__new"; showSheet();
+  $("#sheet").innerHTML = `<div class="grab"></div><div class="sh-head"><div><h2 id="shTitle">Ajouter une adresse</h2><p>Pour un numéro qui manque dans la liste.</p></div>
+    <button class="close" type="button" data-act="close" aria-label="Fermer">×</button></div>
+    <form class="form-grid" id="extraForm">
+      <label>Numéro<input id="exNum" required maxlength="12" placeholder="12 bis"></label>
+      <label>Rue<select id="exStreet">${DATA.streets.map((s) => `<option>${esc(s)}</option>`).join("")}<option value="__autre">Autre rue…</option></select></label>
+      <label id="exOtherL" hidden>Nom de la rue<input id="exOther" maxlength="80"></label>
+      <button class="btn" type="submit">Ajouter</button></form>
+    <button class="btn ghost" type="button" data-act="close">Annuler</button>`;
+  $("#exStreet").onchange = (e) => ($("#exOtherL").hidden = e.target.value !== "__autre");
+};
+async function addExtra() {
+  const num = $("#exNum").value.trim(); let street = $("#exStreet").value;
+  if (street === "__autre") street = $("#exOther").value.trim();
+  if (!num || !street) return;
+  if (await send("addExtra", num, street, myName)) { closeSheet(); toast(`Ajoutée : ${num} ${street}`); }
+}
+
+// ---------- Identité et code d'accès ----------
+function showName() {
+  $("#whoBtn").textContent = myName || "Prénom ?";
+  $("#namePrompt").hidden = !!myName || readOnly;
+}
+$("#whoBtn").onclick = () => { $("#namePrompt").hidden = false; $("#nameInput").value = myName; $("#nameInput").focus(); };
+$("#nameForm").addEventListener("submit", (e) => {
+  e.preventDefault(); const v = $("#nameInput").value.trim(); if (!v) return;
+  myName = v; store.set("prenom", v); showName(); schedule();
+});
+function askCode() { $("#codePrompt").hidden = false; renderSync(true); }
+$("#codeForm").addEventListener("submit", (e) => {
+  e.preventDefault(); code = $("#codeInput").value.trim(); store.set("code", code);
+  $("#codePrompt").hidden = true; version = null; poll();
+});
+
+// ---------- Onglets ----------
+let mapBuilt = false;
+function showTab(id) {
+  for (const b of document.querySelectorAll(".tabs button")) b.setAttribute("aria-selected", b.dataset.tab === id);
+  for (const v of document.querySelectorAll(".view")) v.hidden = v.id !== id;
+  if (id === "mapView") { if (!mapBuilt) { mapBuilt = true; buildMap(); } else applyVB(); renderMapStatus(); }
+  store.set("tab", id);
+}
+document.querySelector(".tabs").addEventListener("click", (e) => { const b = e.target.closest("button"); if (b) showTab(b.dataset.tab); });
+
+// ---------- Démarrage ----------
+$("#bootMsg").hidden = true;
+renderAll();
+showTab(store.get("tab", "listView"));
+showName();
+if (!online) {
+  const n = $("#notice"); n.hidden = false;
+  n.textContent = "Aperçu : ce fichier ouvert seul ne montre pas le suivi. Utilisez le lien de l'application pour voir et saisir les passages.";
+}
+renderSync();
+poll();
+setInterval(poll, POLL_MS);
+setInterval(() => renderSync(), 5000);
+document.addEventListener("visibilitychange", () => { if (!document.hidden) poll(); });
+})();
+</script>
+</body>
+</html>

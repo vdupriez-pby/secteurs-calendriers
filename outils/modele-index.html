@@ -1,0 +1,723 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<base target="_blank">
+<title>Calendriers {{SECTEUR}}</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&display=swap">
+<style>
+/* Layout : appli plein écran pour téléphone — en-tête de progression, vue (liste / carte / activité), barre d'onglets en bas, fiche adresse en panneau glissant. */
+:root {
+  --bg: #f6f5f3;
+  --surface: #ffffff;
+  --sunken: #ecebe8;
+  --fg: #1c1b1a;
+  --muted: #6b6762;
+  --line: #dddad5;
+  --accent: #b3261e;
+  --accent-fg: #ffffff;
+  --todo: #8a8580;
+  --again: #c77700;
+  --done: #2e7d32;
+  --todo-soft: #ecebe8;
+  --again-soft: #fbecd2;
+  --done-soft: #dcefdc;
+  --map-bg: #efede9;
+  --map-road: #ffffff;
+  --map-road-edge: #cfcac2;
+  --map-major: #f6dfa8;
+  --map-path: #c9c4bb;
+  --map-mask: rgba(60, 55, 50, .16);
+  --shadow: 0 -6px 30px rgba(0, 0, 0, .14);
+  --display: "Barlow Condensed", "Arial Narrow", "Roboto Condensed", system-ui, sans-serif;
+  --body: "Atkinson Hyperlegible", system-ui, -apple-system, "Segoe UI", sans-serif;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #161514; --surface: #201f1d; --sunken: #2a2826; --fg: #f1efec; --muted: #a39e97; --line: #3a3734;
+    --accent: #ef6a5f; --accent-fg: #1a0b09;
+    --todo: #a39e97; --again: #f0a530; --done: #66bb6a;
+    --todo-soft: #2e2c2a; --again-soft: #3d2c10; --done-soft: #183320;
+    --map-bg: #1d1c1a; --map-road: #3e3b37; --map-road-edge: #2b2926; --map-major: #6b5523; --map-path: #4a4642;
+    --map-mask: rgba(0, 0, 0, .35); --shadow: 0 -6px 30px rgba(0, 0, 0, .5);
+    color-scheme: dark;
+  }
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html, body { height: 100%; margin: 0; }
+body {
+  background: var(--bg); color: var(--fg); font-family: var(--body); font-size: 15px; line-height: 1.45;
+  display: flex; flex-direction: column; overflow: hidden;
+  padding-top: env(safe-area-inset-top, 0px);
+}
+button, input, select, textarea { font: inherit; color: inherit; }
+button { cursor: pointer; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* En-tête */
+.top { background: var(--surface); border-bottom: 1px solid var(--line); padding: 10px 16px 8px; display: grid; gap: 8px; flex: none; }
+.brand { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+.brand h1 { margin: 0; font-family: var(--display); font-weight: 700; font-size: 24px; letter-spacing: .01em; line-height: 1.1; text-wrap: balance; }
+.brand h1 span { color: var(--accent); }
+.who { font-size: 13px; color: var(--muted); border: 1px solid var(--line); background: none; border-radius: 999px; padding: 3px 10px; white-space: nowrap; max-width: 45%; overflow: hidden; text-overflow: ellipsis; }
+.counts { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.count { display: grid; gap: 0; }
+.count b { font-family: var(--display); font-size: 26px; font-weight: 700; line-height: 1; font-variant-numeric: tabular-nums; }
+.count small { font-size: 11px; text-transform: uppercase; letter-spacing: .07em; color: var(--muted); }
+.count.todo b { color: var(--todo); } .count.again b { color: var(--again); } .count.done b { color: var(--done); }
+.bar { display: flex; height: 6px; border-radius: 3px; overflow: hidden; background: var(--todo-soft); }
+.bar i { display: block; height: 100%; transition: width .3s; }
+.bar .b-done { background: var(--done); } .bar .b-again { background: var(--again); }
+.sync { margin: 0; font-size: 12px; color: var(--muted); display: flex; align-items: center; gap: 6px; }
+.sync::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--done); }
+.sync.off::before { background: var(--again); }
+
+.notice { margin: 0; padding: 8px 16px; font-size: 13px; background: var(--again-soft); border-bottom: 1px solid var(--line); display: flex; gap: 8px; align-items: center; flex-wrap: wrap; flex: none; }
+.notice form { display: flex; gap: 6px; flex: 1 1 220px; }
+.notice input { flex: 1; min-width: 0; padding: 6px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); }
+
+/* Vues */
+main { flex: 1; min-height: 0; position: relative; }
+.view { position: absolute; inset: 0; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+
+/* Liste */
+.tools { position: sticky; top: 0; z-index: 2; background: var(--bg); padding: 10px 16px; display: grid; gap: 8px; border-bottom: 1px solid var(--line); }
+.search { width: 100%; padding: 9px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); }
+.chips { display: flex; gap: 6px; flex-wrap: wrap; }
+.chip { border: 1px solid var(--line); background: var(--surface); border-radius: 999px; padding: 4px 11px; font-size: 13px; display: inline-flex; gap: 6px; align-items: center; }
+.chip[aria-pressed="true"] { background: var(--fg); color: var(--bg); border-color: var(--fg); }
+.dot { width: 10px; height: 10px; border-radius: 50%; flex: none; display: inline-block; }
+.dot.afaire { background: transparent; border: 2px solid var(--todo); }
+.dot.repasser { background: var(--again); } .dot.valide { background: var(--done); }
+
+.street { border-bottom: 1px solid var(--line); }
+.street > button { width: 100%; display: grid; grid-template-columns: 1fr auto; gap: 4px 12px; align-items: center; padding: 11px 16px; background: var(--surface); border: 0; text-align: left; }
+.street > button h2 { margin: 0; font-family: var(--display); font-size: 19px; font-weight: 600; line-height: 1.15; min-width: 0; }
+.street > button .tally { font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.street > button .mini { grid-column: 1 / -1; }
+.street > button .mini.bar { height: 4px; }
+.street ul { list-style: none; margin: 0; padding: 0; }
+.addr { display: grid; grid-template-columns: 58px 1fr auto; gap: 10px; align-items: center; padding: 9px 16px; border-top: 1px solid var(--line); background: var(--bg); width: 100%; border-left: 0; border-right: 0; border-bottom: 0; text-align: left; }
+.addr .num { font-family: var(--display); font-weight: 700; font-size: 20px; font-variant-numeric: tabular-nums; }
+.addr .meta { min-width: 0; font-size: 13px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.addr .meta .nt { color: var(--fg); }
+.pill { font-size: 12px; border-radius: 999px; padding: 2px 9px; white-space: nowrap; display: inline-flex; gap: 5px; align-items: center; font-weight: 700; }
+.pill.afaire { background: var(--todo-soft); color: var(--muted); font-weight: 400; }
+.pill.repasser { background: var(--again-soft); color: var(--again); }
+.pill.valide { background: var(--done-soft); color: var(--done); }
+.pill .ini { font-weight: 400; opacity: .85; }
+.empty { padding: 28px 16px; color: var(--muted); text-align: center; }
+.addbtn { margin: 16px; padding: 10px 14px; border: 1px dashed var(--muted); background: none; border-radius: 10px; color: var(--muted); width: calc(100% - 32px); }
+
+/* Carte */
+#mapView { overflow: hidden; background: var(--map-bg); touch-action: none; }
+#map { width: 100%; height: 100%; display: block; user-select: none; -webkit-user-select: none; }
+#map .r-edge { fill: none; stroke: var(--map-road-edge); stroke-linecap: round; stroke-linejoin: round; }
+#map .r0 { fill: none; stroke: var(--map-path); stroke-width: 1.6; stroke-dasharray: 4 3; }
+#map .r1 { fill: none; stroke: var(--map-road); stroke-width: 7; stroke-linecap: round; stroke-linejoin: round; }
+#map .r2 { fill: none; stroke: var(--map-major); stroke-width: 10; stroke-linecap: round; stroke-linejoin: round; }
+#map .mask { fill: var(--map-mask); fill-rule: evenodd; }
+#map .zone { fill: none; stroke: var(--accent); stroke-width: 2.5; stroke-dasharray: 10 6; vector-effect: non-scaling-stroke; }
+#map .lbl { fill: var(--muted); font-family: var(--body); paint-order: stroke; stroke: var(--map-bg); stroke-width: 3px; stroke-linejoin: round; }
+#map circle { stroke: var(--surface); }
+#map circle.afaire { fill: var(--surface); stroke: var(--todo); }
+#map circle.repasser { fill: var(--again); }
+#map circle.valide { fill: var(--done); }
+#map circle.sel { stroke: var(--accent); }
+.mapctl { position: absolute; right: 12px; top: 12px; display: grid; gap: 6px; }
+.mapctl button { width: 44px; height: 44px; border-radius: 10px; border: 1px solid var(--line); background: var(--surface); font-size: 20px; line-height: 1; box-shadow: 0 1px 4px rgba(0,0,0,.12); }
+.legend { position: absolute; left: 12px; bottom: 12px; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 6px 10px; font-size: 12px; display: flex; gap: 10px; flex-wrap: wrap; max-width: calc(100% - 24px); }
+.legend span { display: inline-flex; align-items: center; gap: 5px; }
+
+/* Activité */
+.act { padding: 14px 16px 24px; display: grid; gap: 14px; max-width: 720px; margin: 0 auto; }
+.act h2 { margin: 0; font-family: var(--display); font-size: 20px; font-weight: 600; }
+.team { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; }
+.member { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; display: grid; gap: 4px; text-align: left; }
+.member[aria-pressed="true"] { border-color: var(--fg); box-shadow: inset 0 0 0 1px var(--fg); }
+.member .nm { font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.member .st { font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.member .st b { color: var(--done); } .member .st em { color: var(--again); font-style: normal; font-weight: 700; }
+.feed { list-style: none; margin: 0; padding: 0; display: grid; }
+.feed li { display: grid; grid-template-columns: auto 1fr; gap: 2px 10px; padding: 10px 0; border-bottom: 1px solid var(--line); }
+.feed li .dot { margin-top: 5px; }
+.feed .what { min-width: 0; }
+.feed .what button { background: none; border: 0; padding: 0; font-weight: 700; text-align: left; text-decoration: underline; text-decoration-color: var(--line); text-underline-offset: 3px; }
+.feed .when { grid-column: 2; font-size: 12px; color: var(--muted); }
+.feed q { font-style: italic; color: var(--muted); }
+
+/* Onglets */
+.tabs { flex: none; display: grid; grid-template-columns: repeat(3, 1fr); background: var(--surface); border-top: 1px solid var(--line); padding-bottom: env(safe-area-inset-bottom, 0px); }
+.tabs button { border: 0; background: none; padding: 10px 4px 12px; font-family: var(--display); font-size: 17px; font-weight: 600; letter-spacing: .02em; color: var(--muted); border-top: 3px solid transparent; }
+.tabs button[aria-selected="true"] { color: var(--fg); border-top-color: var(--accent); }
+
+/* Fiche adresse */
+.scrim { position: fixed; inset: 0; background: rgba(0,0,0,.35); z-index: 10; }
+.sheet { position: fixed; left: 0; right: 0; bottom: 0; z-index: 11; background: var(--surface); border-radius: 18px 18px 0 0; box-shadow: var(--shadow); max-height: 88%; overflow-y: auto; padding: 8px 16px calc(16px + env(safe-area-inset-bottom, 0px)); display: grid; gap: 14px; max-width: 640px; margin: 0 auto; }
+.grab { width: 40px; height: 4px; border-radius: 2px; background: var(--line); margin: 0 auto; }
+.sh-head { display: flex; justify-content: space-between; gap: 12px; align-items: start; }
+.sh-head h2 { margin: 0; font-family: var(--display); font-size: 26px; font-weight: 700; line-height: 1.1; text-wrap: balance; }
+.sh-head p { margin: 2px 0 0; color: var(--muted); font-size: 13px; }
+.close { border: 0; background: var(--sunken); border-radius: 50%; width: 44px; height: 44px; font-size: 24px; line-height: 1; flex: none; display: grid; place-items: center; }
+.status3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.status3 button { border: 2px solid var(--line); background: var(--bg); border-radius: 12px; padding: 12px 4px; font-family: var(--display); font-size: 18px; font-weight: 600; display: grid; justify-items: center; gap: 4px; }
+.status3 button[aria-pressed="true"].afaire { border-color: var(--todo); background: var(--todo-soft); }
+.status3 button[aria-pressed="true"].repasser { border-color: var(--again); background: var(--again-soft); color: var(--again); }
+.status3 button[aria-pressed="true"].valide { border-color: var(--done); background: var(--done-soft); color: var(--done); }
+.status3 button:disabled { opacity: .55; cursor: not-allowed; }
+.byline { margin: -6px 0 0; font-size: 13px; color: var(--muted); }
+.byline b { color: var(--fg); }
+.sec h3 { margin: 0 0 6px; font-size: 12px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); font-weight: 700; }
+.notes { list-style: none; margin: 0 0 8px; padding: 0; display: grid; gap: 8px; }
+.notes li { background: var(--bg); border: 1px solid var(--line); border-radius: 10px; padding: 8px 10px; display: grid; gap: 2px; }
+.notes .tx { white-space: pre-wrap; overflow-wrap: anywhere; }
+.notes .by { font-size: 12px; color: var(--muted); display: flex; justify-content: space-between; gap: 8px; }
+.notes .by button { border: 0; background: none; color: var(--accent); font-size: 12px; padding: 0; }
+.noteform { display: grid; gap: 6px; }
+.noteform textarea { width: 100%; min-height: 64px; resize: vertical; padding: 8px 10px; border: 1px solid var(--line); border-radius: 10px; background: var(--bg); }
+.btn { border: 0; border-radius: 10px; padding: 11px 14px; background: var(--accent); color: var(--accent-fg); font-weight: 700; }
+.btn.ghost { background: var(--sunken); color: var(--fg); font-weight: 400; }
+.btn:disabled { opacity: .5; }
+.row { display: flex; gap: 8px; flex-wrap: wrap; }
+.row > * { flex: 1 1 140px; text-align: center; text-decoration: none; }
+details summary { cursor: pointer; font-size: 12px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); font-weight: 700; }
+.hist { list-style: none; margin: 8px 0 0; padding: 0; font-size: 13px; display: grid; gap: 4px; }
+.hist li span { color: var(--muted); }
+.form-grid { display: grid; gap: 8px; }
+.form-grid label { display: grid; gap: 3px; font-size: 13px; color: var(--muted); }
+.form-grid input, .form-grid select { padding: 9px 10px; border: 1px solid var(--line); border-radius: 10px; background: var(--bg); color: var(--fg); }
+.toast { position: fixed; left: 50%; bottom: calc(76px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); background: var(--fg); color: var(--bg); padding: 9px 16px; border-radius: 10px; font-size: 14px; z-index: 20; max-width: calc(100% - 32px); }
+@media (prefers-reduced-motion: reduce) { .bar i { transition: none; } }
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="brand">
+    <h1>Calendriers <span>{{SECTEUR}}</span></h1>
+    <button class="who" id="whoBtn" type="button">Prénom ?</button>
+  </div>
+  <div class="counts" aria-live="polite">
+    <div class="count todo"><b id="nTodo">–</b><small>À faire</small></div>
+    <div class="count again"><b id="nAgain">–</b><small>À repasser</small></div>
+    <div class="count done"><b id="nDone">–</b><small>Validées</small></div>
+  </div>
+  <div class="bar" aria-hidden="true"><i class="b-done" id="barDone" style="width:0"></i><i class="b-again" id="barAgain" style="width:0"></i></div>
+  <p class="sync off" id="sync">Connexion…</p>
+</header>
+<p class="notice" id="bootMsg">Chargement… Si ce message reste affiché, le fichier « Index » est incomplet dans Apps Script : recollez-le en entier puis redéployez.</p>
+<p class="notice" id="notice" hidden></p>
+<div class="notice" id="codePrompt" hidden>
+  <span>Entrez le code d'accès donné par l'organisateur.</span>
+  <form id="codeForm"><input id="codeInput" maxlength="30" placeholder="Code d'accès" autocomplete="off" inputmode="numeric"><button class="btn" type="submit">OK</button></form>
+</div>
+<div class="notice" id="namePrompt" hidden>
+  <span>Votre prénom signe vos passages et vos notes.</span>
+  <form id="nameForm"><input id="nameInput" maxlength="30" placeholder="Votre prénom" autocomplete="given-name"><button class="btn" type="submit">OK</button></form>
+</div>
+
+<main>
+  <section class="view" id="listView" aria-label="Liste des adresses">
+    <div class="tools">
+      <input class="search" id="q" type="search" placeholder="Rechercher une rue, un numéro, une note…" autocomplete="off">
+      <div class="chips" id="filters" role="group" aria-label="Filtrer par statut">
+        <button class="chip" data-f="tous" aria-pressed="true" type="button">Toutes</button>
+        <button class="chip" data-f="afaire" aria-pressed="false" type="button"><span class="dot afaire"></span>À faire</button>
+        <button class="chip" data-f="repasser" aria-pressed="false" type="button"><span class="dot repasser"></span>À repasser</button>
+        <button class="chip" data-f="valide" aria-pressed="false" type="button"><span class="dot valide"></span>Validées</button>
+        <button class="chip" data-f="notes" aria-pressed="false" type="button">Avec note</button>
+      </div>
+    </div>
+    <div id="streets"></div>
+    <button class="addbtn" id="addAddr" type="button">+ Ajouter une adresse absente de la liste</button>
+  </section>
+
+  <section class="view" id="mapView" aria-label="Carte du secteur" hidden>
+    <svg id="map" role="img" aria-label="Carte des adresses du {{SECTEUR}}"></svg>
+    <div class="mapctl">
+      <button type="button" id="zin" aria-label="Zoomer">+</button>
+      <button type="button" id="zout" aria-label="Dézoomer">−</button>
+      <button type="button" id="zfit" aria-label="Voir tout le secteur">⤢</button>
+    </div>
+    <div class="legend"><span><i class="dot afaire"></i>À faire</span><span><i class="dot repasser"></i>À repasser</span><span><i class="dot valide"></i>Validée</span></div>
+  </section>
+
+  <section class="view" id="actView" aria-label="Activité" hidden>
+    <div class="act">
+      <h2>L'équipe</h2>
+      <div class="team" id="team"></div>
+      <h2 id="feedTitle">Derniers passages</h2>
+      <ul class="feed" id="feed"></ul>
+    </div>
+  </section>
+</main>
+
+<nav class="tabs" role="tablist">
+  <button role="tab" type="button" data-tab="listView" aria-selected="true">Liste</button>
+  <button role="tab" type="button" data-tab="mapView" aria-selected="false">Carte</button>
+  <button role="tab" type="button" data-tab="actView" aria-selected="false">Activité</button>
+</nav>
+
+<div class="scrim" id="scrim" hidden></div>
+<section class="sheet" id="sheet" role="dialog" aria-modal="true" aria-labelledby="shTitle" hidden></section>
+<div class="toast" id="toast" role="status" hidden></div>
+
+<script>
+const DATA = /*DATA*/;
+</script>
+<script>
+(() => {
+"use strict";
+const STAT = { afaire: "À faire", repasser: "À repasser", valide: "Validée" };
+const POLL_MS = 15000;
+const $ = (s) => document.querySelector(s);
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const norm = (s) => String(s).normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+const store = {
+  get(k, d) { try { const v = localStorage.getItem("s2." + k); return v == null ? d : JSON.parse(v); } catch { return d; } },
+  set(k, v) { try { localStorage.setItem("s2." + k, JSON.stringify(v)); } catch {} },
+};
+
+// ---------- Référentiel d'adresses ----------
+// Les tracés de rues sont stockés en écarts entiers (1e-5 degré) pour alléger le fichier.
+{
+  const [bLon, bLat, q] = DATA.roadBase;
+  DATA.roads = DATA.roads.map(([k, name, s]) => {
+    const v = s.split(",").map(Number), pts = [];
+    let x = 0, y = 0;
+    for (let i = 0; i < v.length; i += 2) { x += v[i]; y += v[i + 1]; pts.push([bLon + x / q, bLat + y / q]); }
+    return [k, name, pts];
+  });
+}
+const ADDRS = DATA.addrs.map(([id, num, s, c, lon, lat]) => ({
+  id, num, street: DATA.streets[s], commune: DATA.communes[c], lon, lat,
+}));
+let extras = [];
+const byId = new Map(ADDRS.map((a) => [a.id, a]));
+const allAddrs = () => ADDRS.concat(extras);
+const label = (a) => (a.num ? a.num + " " : "") + a.street;
+
+// ---------- État partagé (copie locale de la feuille Google) ----------
+const online = typeof google !== "undefined" && google.script && google.script.run;
+let readOnly = !online, version = null, lastSync = 0, writes = 0, writeSeq = 0;
+let myName = store.get("prenom", ""), code = store.get("code", "");
+const suivi = new Map();      // adresse -> {statut, nom, le}
+let notes = [];               // [{id, adresse, texte, nom, le}]
+let hist = [];                // 300 derniers
+const statusOf = (id) => suivi.get(id)?.statut || "afaire";
+const whoName = (nom) => nom || "Quelqu'un";
+const initials = (n) => n.split(/[\s-]+/).filter(Boolean).slice(0, 2).map((w) => w[0].toUpperCase()).join("");
+const fmt = new Intl.DateTimeFormat("fr-FR", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
+const when = (t) => (t ? fmt.format(new Date(t)) : "");
+function ago(t) {
+  const m = Math.round((Date.now() - t) / 60000);
+  if (m < 1) return "à l'instant";
+  if (m < 60) return `il y a ${m} min`;
+  if (m < 60 * 20) return `il y a ${Math.floor(m / 60)} h`;
+  return when(t);
+}
+
+// ---------- Appels au serveur Apps Script ----------
+const call = (fn, ...args) => new Promise((res, rej) =>
+  google.script.run.withSuccessHandler(res).withFailureHandler(rej)[fn](code, ...args));
+
+function applyState(s) {
+  lastSync = Date.now(); renderSync();
+  if (!s || s.same) return;
+  version = s.version;
+  suivi.clear(); for (const r of s.suivi) suivi.set(r.adresse, r);
+  notes = s.notes; hist = s.hist;
+  for (const e of extras) byId.delete(e.id);
+  extras = s.ajouts.map((x) => ({ id: x.id, num: x.num, street: x.rue, commune: DATA.commune, extra: true, lon: null, lat: null }));
+  for (const e of extras) byId.set(e.id, e);
+  schedule();
+}
+function onError(err) {
+  const msg = String(err?.message || err);
+  if (msg.includes("CODE_ACCES")) { askCode(); return; }
+  lastSync = 0; renderSync(true);
+  toast(msg.includes("auteur") ? "Seul l'auteur peut supprimer cette note." : "Pas de réseau : la saisie n'a pas été enregistrée. Réessayez.");
+}
+let polling = false;
+async function poll() {
+  if (!online || polling || writes || document.hidden) return;
+  polling = true; const seq = writeSeq;
+  try { const s = await call("getState", version); if (seq === writeSeq) applyState(s); }
+  catch (e) { const m = String(e?.message || e); if (m.includes("CODE_ACCES")) askCode(); else { lastSync = 0; renderSync(true); } }
+  finally { polling = false; }
+}
+async function send(fn, ...args) {
+  writes++; writeSeq++;
+  try { applyState(await call(fn, ...args)); return true; }
+  catch (e) { onError(e); version = null; return false; }
+  finally { writes--; if (!writes) setTimeout(poll, 50); }
+}
+function renderSync(off) {
+  const el = $("#sync");
+  if (!online) { el.className = "sync off"; el.textContent = "Aperçu hors ligne"; return; }
+  const bad = off || !lastSync || Date.now() - lastSync > POLL_MS * 3;
+  el.className = "sync" + (bad ? " off" : "");
+  el.textContent = bad ? "Hors ligne : les passages des autres ne s'affichent plus" : "À jour · " + new Intl.DateTimeFormat("fr-FR", { hour: "2-digit", minute: "2-digit", second: "2-digit" }).format(new Date(lastSync));
+}
+
+// ---------- Rendu groupé ----------
+let raf = 0;
+function schedule() { if (!raf) raf = requestAnimationFrame(() => { raf = 0; renderAll(); }); }
+function renderAll() { renderCounts(); renderList(); renderMapStatus(); renderActivity(); if (openId && openId !== "__new") renderSheet(); }
+
+function renderCounts() {
+  const all = allAddrs(); let a = 0, d = 0;
+  for (const x of all) { const s = statusOf(x.id); if (s === "valide") d++; else if (s === "repasser") a++; }
+  $("#nTodo").textContent = all.length - a - d; $("#nAgain").textContent = a; $("#nDone").textContent = d;
+  $("#barDone").style.width = (100 * d / all.length) + "%"; $("#barAgain").style.width = (100 * a / all.length) + "%";
+}
+
+// ---------- Liste ----------
+let filter = "tous", query = "";
+const open = new Set(store.get("open", []));
+function notesFor(id) { return notes.filter((n) => n.adresse === id).sort((a, b) => a.le - b.le); }
+function renderList() {
+  const q = norm(query.trim());
+  const groups = new Map();
+  for (const a of allAddrs()) {
+    const st = statusOf(a.id);
+    const ns = notesFor(a.id);
+    if (filter === "notes" ? !ns.length : filter !== "tous" && st !== filter) continue;
+    if (q && !norm(label(a) + " " + a.commune + " " + ns.map((n) => n.texte).join(" ")).includes(q)) continue;
+    if (!groups.has(a.street)) groups.set(a.street, []);
+    groups.get(a.street).push({ a, st, ns });
+  }
+  const order = DATA.streets.concat([...new Set(extras.map((e) => e.street))].filter((s) => !DATA.streets.includes(s)));
+  const force = filter !== "tous" || q;
+  let html = "";
+  for (const street of order) {
+    const rows = groups.get(street); if (!rows) continue;
+    const all = allAddrs().filter((a) => a.street === street);
+    const d = all.filter((a) => statusOf(a.id) === "valide").length, r = all.filter((a) => statusOf(a.id) === "repasser").length;
+    const isOpen = force || open.has(street);
+    html += `<div class="street"><button type="button" data-street="${esc(street)}" aria-expanded="${isOpen}">
+      <h2>${esc(street)}</h2><span class="tally">${d}/${all.length} validées${r ? ` · ${r} à repasser` : ""}</span>
+      <span class="mini bar"><i class="b-done" style="width:${100 * d / all.length}%"></i><i class="b-again" style="width:${100 * r / all.length}%"></i></span></button>`;
+    if (isOpen) {
+      html += "<ul>";
+      for (const { a, st, ns } of rows) {
+        const s = suivi.get(a.id);
+        const who = s && st !== "afaire" ? `<span class="ini">${esc(initials(whoName(s.nom)))}</span>` : "";
+        const last = ns[ns.length - 1];
+        const meta = [a.commune !== DATA.commune ? esc(a.commune) : "", last ? `<span class="nt">${esc(last.texte)}</span>` : "", a.extra ? "ajoutée à la main" : ""].filter(Boolean).join(" · ");
+        html += `<li><button type="button" class="addr" data-id="${esc(a.id)}"><span class="num">${esc(a.num || "s/n")}</span>
+          <span class="meta">${meta}</span><span class="pill ${st}">${STAT[st]}${who}</span></button></li>`;
+      }
+      html += "</ul>";
+    }
+    html += "</div>";
+  }
+  $("#streets").innerHTML = html || `<p class="empty">Aucune adresse ne correspond à ce filtre.</p>`;
+}
+$("#streets").addEventListener("click", (e) => {
+  const b = e.target.closest("button"); if (!b) return;
+  if (b.dataset.id) return openSheet(b.dataset.id);
+  const s = b.dataset.street; if (!s || filter !== "tous" || query.trim()) return;
+  open.has(s) ? open.delete(s) : open.add(s); store.set("open", [...open]); renderList();
+});
+$("#filters").addEventListener("click", (e) => {
+  const b = e.target.closest("[data-f]"); if (!b) return;
+  filter = b.dataset.f;
+  for (const c of document.querySelectorAll("#filters .chip")) c.setAttribute("aria-pressed", c === b);
+  renderList();
+});
+$("#q").addEventListener("input", (e) => { query = e.target.value; renderList(); });
+
+// ---------- Carte ----------
+const SVGNS = "http:\/\/www.w3.org/2000/svg"; // écrit avec \/ : Google supprime tout ce qui suit // dans le code
+const [lon0, lat0] = DATA.center, kx = Math.cos(lat0 * Math.PI / 180) * 111320, ky = 110540;
+const P = (lon, lat) => [(lon - lon0) * kx, (lat0 - lat) * ky];
+const svg = $("#map");
+const pathD = (pts, close) => pts.map((p, i) => { const [x, y] = P(p[0], p[1]); return (i ? "L" : "M") + x.toFixed(1) + " " + y.toFixed(1); }).join("") + (close ? "Z" : "");
+const polyXY = DATA.poly.map((p) => P(p[0], p[1]));
+const box = polyXY.reduce((b, [x, y]) => [Math.min(b[0], x), Math.min(b[1], y), Math.max(b[2], x), Math.max(b[3], y)], [1e9, 1e9, -1e9, -1e9]);
+let vb = null;
+const circles = new Map();
+const labels = [];
+function buildMap() {
+  const big = `M${box[0] - 5000} ${box[1] - 5000}H${box[2] + 5000}V${box[3] + 5000}H${box[0] - 5000}Z`;
+  const roadsBy = ["", "", ""]; let edge = "";
+  for (const [k, , pts] of DATA.roads) { const d = pathD(pts); roadsBy[k] += d; if (k) edge += d; }
+  // Une étiquette par rue nommée, sur son tronçon le plus long, écrite de gauche à droite.
+  const best = new Map();
+  for (const [k, name, pts] of DATA.roads) {
+    if (!k || !name || pts.length < 2) continue;
+    const xy = pts.map((p) => P(p[0], p[1]));
+    let len = 0; for (let i = 1; i < xy.length; i++) len += Math.hypot(xy[i][0] - xy[i - 1][0], xy[i][1] - xy[i - 1][1]);
+    if (!best.has(name) || best.get(name).len < len) best.set(name, { len, xy });
+  }
+  let defs = "", txt = "", n = 0;
+  for (const [name, { len, xy }] of best) {
+    if (len < 60) continue;
+    const pts = xy[0][0] > xy[xy.length - 1][0] ? xy.slice().reverse() : xy;
+    defs += `<path id="lp${n}" d="${pts.map((p, i) => (i ? "L" : "M") + p[0].toFixed(1) + " " + p[1].toFixed(1)).join("")}"/>`;
+    txt += `<text class="lbl" data-len="${len}"><textPath href="#lp${n}" startOffset="50%" text-anchor="middle" dominant-baseline="middle">${esc(name)}</textPath></text>`;
+    n++;
+  }
+  svg.innerHTML = `<defs>${defs}</defs><path class="r0" d="${roadsBy[0]}"/>
+    <path class="r-edge" style="stroke-width:9.5" d="${edge}"/><path class="r1" d="${roadsBy[1]}"/><path class="r2" d="${roadsBy[2]}"/>
+    <path class="mask" d="${big}${pathD(DATA.poly, true)}"/><path class="zone" d="${pathD(DATA.poly, true)}"/>
+    <g id="labels">${txt}</g><g id="pts"></g>`;
+  const g = svg.querySelector("#pts");
+  for (const a of ADDRS) {
+    const c = document.createElementNS(SVGNS, "circle");
+    const [x, y] = P(a.lon, a.lat);
+    c.setAttribute("cx", x.toFixed(1)); c.setAttribute("cy", y.toFixed(1)); c.dataset.id = a.id;
+    const t = document.createElementNS(SVGNS, "title"); t.textContent = label(a); c.appendChild(t);
+    g.appendChild(c); circles.set(a.id, c);
+  }
+  labels.push(...svg.querySelectorAll(".lbl"));
+  fit();
+}
+function fit() { const m = 40; vb = [box[0] - m, box[1] - m, box[2] - box[0] + 2 * m, box[3] - box[1] + 2 * m]; applyVB(); }
+function pxPerUnit() { const r = svg.getBoundingClientRect(); return r.width ? Math.min(r.width / vb[2], r.height / vb[3]) : 1; }
+function applyVB() {
+  if (!vb) return;
+  svg.setAttribute("viewBox", vb.map((v) => v.toFixed(2)).join(" "));
+  const k = pxPerUnit();
+  const r = Math.max(4, Math.min(9, 2.2 + k * 4)) / k;
+  for (const c of circles.values()) { c.setAttribute("r", r.toFixed(2)); c.setAttribute("stroke-width", (1.6 / k).toFixed(2)); }
+  const fs = 11 / k;
+  for (const t of labels) { t.style.fontSize = fs + "px"; t.style.strokeWidth = (3 / k) + "px"; t.style.display = (k < 0.9 && +t.dataset.len < 250) || k < 0.45 ? "none" : ""; }
+}
+function renderMapStatus() {
+  for (const [id, c] of circles) c.setAttribute("class", statusOf(id) + (id === openId ? " sel" : ""));
+}
+function zoomAt(f, cx, cy) {
+  const nw = Math.min(6000, Math.max(60, vb[2] / f)), s = nw / vb[2];
+  vb = [cx - (cx - vb[0]) * s, cy - (cy - vb[1]) * s, nw, vb[3] * s]; applyVB();
+}
+function toUser(clientX, clientY) {
+  const r = svg.getBoundingClientRect(), k = pxPerUnit();
+  const ox = (r.width - vb[2] * k) / 2, oy = (r.height - vb[3] * k) / 2;
+  return [vb[0] + (clientX - r.left - ox) / k, vb[1] + (clientY - r.top - oy) / k];
+}
+const ptrs = new Map(); let moved = 0, pinch = null;
+svg.addEventListener("pointerdown", (e) => { svg.setPointerCapture(e.pointerId); ptrs.set(e.pointerId, [e.clientX, e.clientY]); moved = 0; if (ptrs.size === 2) { const [a, b] = [...ptrs.values()]; pinch = Math.hypot(a[0] - b[0], a[1] - b[1]); } });
+svg.addEventListener("pointermove", (e) => {
+  if (!ptrs.has(e.pointerId)) return;
+  const prev = ptrs.get(e.pointerId); ptrs.set(e.pointerId, [e.clientX, e.clientY]);
+  if (ptrs.size === 1) {
+    const k = pxPerUnit(), dx = e.clientX - prev[0], dy = e.clientY - prev[1];
+    moved += Math.abs(dx) + Math.abs(dy); vb[0] -= dx / k; vb[1] -= dy / k; applyVB();
+  } else if (ptrs.size === 2) {
+    const [a, b] = [...ptrs.values()], d = Math.hypot(a[0] - b[0], a[1] - b[1]);
+    const [cx, cy] = toUser((a[0] + b[0]) / 2, (a[1] + b[1]) / 2);
+    if (pinch) zoomAt(d / pinch, cx, cy); pinch = d; moved = 99;
+  }
+});
+const endPtr = (e) => {
+  const tap = ptrs.size === 1 && moved < 8; ptrs.delete(e.pointerId); if (ptrs.size < 2) pinch = null;
+  if (tap && e.type === "pointerup") {
+    const t = document.elementFromPoint(e.clientX, e.clientY);
+    if (t && t.tagName === "circle" && t.dataset.id) openSheet(t.dataset.id);
+  }
+};
+svg.addEventListener("pointerup", endPtr); svg.addEventListener("pointercancel", endPtr);
+svg.addEventListener("wheel", (e) => { e.preventDefault(); const [x, y] = toUser(e.clientX, e.clientY); zoomAt(e.deltaY < 0 ? 1.25 : 0.8, x, y); }, { passive: false });
+const center = () => [vb[0] + vb[2] / 2, vb[1] + vb[3] / 2];
+$("#zin").onclick = () => zoomAt(1.6, ...center());
+$("#zout").onclick = () => zoomAt(1 / 1.6, ...center());
+$("#zfit").onclick = fit;
+window.addEventListener("resize", applyVB);
+function focusOnMap(id) {
+  const a = byId.get(id); if (!a || a.lon == null) return;
+  closeSheet(); showTab("mapView");
+  const [x, y] = P(a.lon, a.lat); vb = [x - 120, y - 160, 240, 320]; applyVB();
+  for (const [cid, c] of circles) c.classList.toggle("sel", cid === id);
+}
+
+// ---------- Activité ----------
+let teamFilter = null;
+function renderActivity() {
+  const per = new Map();
+  const bump = (nom, key) => { const k = nom || "?"; if (!per.has(k)) per.set(k, { valide: 0, repasser: 0, actions: 0 }); per.get(k)[key]++; };
+  for (const s of suivi.values()) if (s.statut === "valide" || s.statut === "repasser") bump(s.nom, s.statut);
+  for (const h of hist) bump(h.nom, "actions");
+  const team = [...per.entries()].sort((a, b) => b[1].valide - a[1].valide);
+  $("#team").innerHTML = team.length ? team.map(([k, m]) => `<button type="button" class="member" data-k="${esc(k)}" aria-pressed="${teamFilter === k}">
+      <span class="nm">${esc(whoName(k === "?" ? "" : k))}</span>
+      <span class="st"><b>${m.valide}</b> validée${m.valide > 1 ? "s" : ""} · <em>${m.repasser}</em> à repasser</span></button>`).join("")
+    : `<p class="empty">Personne n'a encore rien saisi. Les vendeurs apparaîtront ici dès leur premier passage.</p>`;
+  const items = hist.filter((h) => !teamFilter || (h.nom || "?") === teamFilter);
+  $("#feedTitle").textContent = teamFilter ? `Passages de ${whoName(teamFilter === "?" ? "" : teamFilter)}` : "Derniers passages";
+  $("#feed").innerHTML = items.length ? items.slice(0, 150).map((h) => {
+    const a = byId.get(h.adresse); const where = a ? label(a) : "Adresse supprimée";
+    let what, dot = "afaire";
+    if (h.action === "statut") { what = `${esc(STAT[h.de] || "À faire")} → <b>${esc(STAT[h.vers] || "")}</b>`; dot = h.vers || "afaire"; }
+    else if (h.action === "note") what = `a ajouté une note <q>${esc(h.texte)}</q>`;
+    else if (h.action === "note-suppr") what = "a supprimé une note";
+    else what = "a ajouté l'adresse";
+    return `<li><span class="dot ${dot}"></span><span class="what">${esc(whoName(h.nom))} · ${what} · <button type="button" data-id="${esc(h.adresse)}">${esc(where)}</button></span><span class="when">${ago(h.le)}</span></li>`;
+  }).join("") : `<li class="empty">Aucun passage enregistré pour l'instant.</li>`;
+}
+$("#team").addEventListener("click", (e) => { const b = e.target.closest(".member"); if (!b) return; teamFilter = teamFilter === b.dataset.k ? null : b.dataset.k; renderActivity(); });
+$("#feed").addEventListener("click", (e) => { const b = e.target.closest("button[data-id]"); if (b && byId.has(b.dataset.id)) openSheet(b.dataset.id); });
+
+// ---------- Fiche adresse ----------
+// La fiche se ferme par ×, par « Fermer », en touchant le fond, avec Échap, ou avec le bouton retour du téléphone.
+let openId = null, addrHist = [], sheetInHistory = false;
+function showSheet() {
+  $("#scrim").hidden = false; $("#sheet").hidden = false;
+  if (!sheetInHistory) { try { history.pushState({ fiche: 1 }, ""); sheetInHistory = true; } catch {} }
+}
+function closeSheet(fromBack) {
+  if (!openId && $("#sheet").hidden) return;
+  openId = null; addrHist = [];
+  $("#scrim").hidden = true; $("#sheet").hidden = true; $("#sheet").innerHTML = "";
+  renderMapStatus();
+  if (sheetInHistory) { sheetInHistory = false; if (fromBack !== true) { try { history.back(); } catch {} } }
+}
+window.addEventListener("popstate", () => { if (sheetInHistory) closeSheet(true); });
+function openSheet(id) {
+  openId = id; addrHist = []; showSheet(); renderSheet(); renderMapStatus();
+  loadAddrHist(id);
+  $("#sheet").scrollTop = 0;
+}
+async function loadAddrHist(id) {
+  if (!online || id.startsWith("__")) return;
+  try { const h = await call("getAddrHist", id); if (openId === id) { addrHist = h; renderSheet(); } } catch {}
+}
+$("#scrim").addEventListener("click", () => closeSheet());
+document.addEventListener("keydown", (e) => { if (e.key === "Escape" && openId) closeSheet(); });
+function renderSheet() {
+  const a = byId.get(openId); if (!a) return closeSheet();
+  const st = statusOf(a.id), s = suivi.get(a.id), ns = notesFor(a.id);
+  const draft = $("#noteTx")?.value ?? "";
+  const dis = readOnly ? "disabled" : "";
+  const by = s ? `${st === "afaire" ? "Remise à faire" : STAT[st]} par <b>${esc(whoName(s.nom))}</b>, ${esc(when(s.le))}` : "Personne n'est encore passé.";
+  const maps = a.lon != null ? `https:\/\/www.google.com/maps/dir/?api=1&destination=${a.lat},${a.lon}` : `https:\/\/www.google.com/maps/search/?api=1&query=${encodeURIComponent(label(a) + ", " + a.commune)}`;
+  const scroll = $("#sheet").scrollTop;
+  $("#sheet").innerHTML = `<div class="grab"></div>
+    <div class="sh-head"><div><h2 id="shTitle">${esc(label(a))}</h2><p>${esc(a.commune)}${a.extra ? " · ajoutée à la main" : ""}</p></div>
+      <button class="close" type="button" data-act="close" aria-label="Fermer la fiche">×</button></div>
+    <div class="status3" role="group" aria-label="Statut">
+      ${["afaire", "repasser", "valide"].map((k) => `<button type="button" class="${k}" data-st="${k}" aria-pressed="${st === k}" ${dis}><span class="dot ${k}"></span>${STAT[k]}</button>`).join("")}
+    </div>
+    <p class="byline">${by}</p>
+    <div class="sec"><h3>Notes</h3>
+      ${ns.length ? `<ul class="notes">${ns.map((n) => `<li><span class="tx">${esc(n.texte)}</span><span class="by"><span>${esc(whoName(n.nom))} · ${esc(when(n.le))}</span>${
+        !readOnly && myName && n.nom === myName ? `<button type="button" data-del="${esc(n.id)}">Supprimer</button>` : ""}</span></li>`).join("")}</ul>` : ""}
+      <form class="noteform" id="noteForm"><textarea id="noteTx" maxlength="500" placeholder="Code d'accès, date de repasse souhaitée, interphone…" ${dis}>${esc(draft)}</textarea>
+      <button class="btn" type="submit" ${dis}>Ajouter la note</button></form>
+    </div>
+    <div class="row"><a class="btn ghost" href="${maps}" target="_blank" rel="noopener">Itinéraire</a>${a.lon != null ? `<button class="btn ghost" type="button" data-act="map">Voir sur la carte</button>` : ""}</div>
+    <details ${store.get("histOpen", false) ? "open" : ""} id="histBox"><summary>Historique de l'adresse</summary>
+      <ul class="hist">${addrHist.length ? addrHist.map((h) => `<li>${esc(whoName(h.nom))} : ${
+        h.action === "statut" ? `${esc(STAT[h.de] || "À faire")} → ${esc(STAT[h.vers] || "")}` : h.action === "note" ? `note « ${esc(h.texte)} »` : h.action === "note-suppr" ? "note supprimée" : "adresse ajoutée"
+      } <span>· ${esc(when(h.le))}</span></li>`).join("") : "<li><span>Aucun changement enregistré.</span></li>"}</ul></details>
+    <button class="btn ghost" type="button" data-act="close">Fermer</button>`;
+  $("#sheet").scrollTop = scroll;
+  $("#histBox").addEventListener("toggle", (e) => store.set("histOpen", e.target.open));
+}
+$("#sheet").addEventListener("click", (e) => {
+  const b = e.target.closest("button"); if (!b || b.disabled) return;
+  if (b.dataset.act === "close") closeSheet();
+  else if (b.dataset.act === "map") focusOnMap(openId);
+  else if (b.dataset.st) setStatus(openId, b.dataset.st);
+  else if (b.dataset.del) delNote(b.dataset.del);
+});
+$("#sheet").addEventListener("submit", (e) => {
+  e.preventDefault();
+  if (e.target.id === "noteForm") { const t = $("#noteTx").value.trim(); if (t) addNote(openId, t); }
+  if (e.target.id === "extraForm") addExtra();
+});
+
+// ---------- Écritures (affichées tout de suite, confirmées par la feuille) ----------
+function toast(msg) { const t = $("#toast"); t.textContent = msg; t.hidden = false; clearTimeout(toast.t); toast.t = setTimeout(() => (t.hidden = true), 2600); }
+function canWrite() {
+  if (readOnly) { toast("Ouvrez la page par le lien de l'application pour saisir."); return false; }
+  if (!myName) { $("#namePrompt").hidden = false; $("#nameInput").focus(); toast("Indiquez d'abord votre prénom en haut de l'écran."); return false; }
+  return true;
+}
+async function setStatus(id, vers) {
+  if (!canWrite()) return;
+  const a = byId.get(id); if (statusOf(id) === vers) return;
+  suivi.set(id, { adresse: id, statut: vers, nom: myName, le: Date.now() }); schedule();
+  if (await send("setStatus", id, label(a), vers, myName)) { toast(`${STAT[vers]} : ${label(a)}`); loadAddrHist(id); }
+}
+async function addNote(id, texte) {
+  if (!canWrite()) return;
+  notes = notes.concat({ id: "tmp", adresse: id, texte, nom: myName, le: Date.now() });
+  $("#noteTx").value = ""; schedule();
+  if (await send("addNote", id, label(byId.get(id)), texte, myName)) loadAddrHist(id);
+  else if (openId === id) { const t = $("#noteTx"); if (t && !t.value) t.value = texte; }
+}
+async function delNote(nid) {
+  const n = notes.find((x) => x.id === nid); if (!n || !canWrite()) return;
+  notes = notes.filter((x) => x.id !== nid); schedule();
+  if (await send("delNote", nid, myName)) loadAddrHist(n.adresse);
+}
+$("#addAddr").onclick = () => {
+  if (!canWrite()) return;
+  openId = "__new"; showSheet();
+  $("#sheet").innerHTML = `<div class="grab"></div><div class="sh-head"><div><h2 id="shTitle">Ajouter une adresse</h2><p>Pour un numéro qui manque dans la liste.</p></div>
+    <button class="close" type="button" data-act="close" aria-label="Fermer">×</button></div>
+    <form class="form-grid" id="extraForm">
+      <label>Numéro<input id="exNum" required maxlength="12" placeholder="12 bis"></label>
+      <label>Rue<select id="exStreet">${DATA.streets.map((s) => `<option>${esc(s)}</option>`).join("")}<option value="__autre">Autre rue…</option></select></label>
+      <label id="exOtherL" hidden>Nom de la rue<input id="exOther" maxlength="80"></label>
+      <button class="btn" type="submit">Ajouter</button></form>
+    <button class="btn ghost" type="button" data-act="close">Annuler</button>`;
+  $("#exStreet").onchange = (e) => ($("#exOtherL").hidden = e.target.value !== "__autre");
+};
+async function addExtra() {
+  const num = $("#exNum").value.trim(); let street = $("#exStreet").value;
+  if (street === "__autre") street = $("#exOther").value.trim();
+  if (!num || !street) return;
+  if (await send("addExtra", num, street, myName)) { closeSheet(); toast(`Ajoutée : ${num} ${street}`); }
+}
+
+// ---------- Identité et code d'accès ----------
+function showName() {
+  $("#whoBtn").textContent = myName || "Prénom ?";
+  $("#namePrompt").hidden = !!myName || readOnly;
+}
+$("#whoBtn").onclick = () => { $("#namePrompt").hidden = false; $("#nameInput").value = myName; $("#nameInput").focus(); };
+$("#nameForm").addEventListener("submit", (e) => {
+  e.preventDefault(); const v = $("#nameInput").value.trim(); if (!v) return;
+  myName = v; store.set("prenom", v); showName(); schedule();
+});
+function askCode() { $("#codePrompt").hidden = false; renderSync(true); }
+$("#codeForm").addEventListener("submit", (e) => {
+  e.preventDefault(); code = $("#codeInput").value.trim(); store.set("code", code);
+  $("#codePrompt").hidden = true; version = null; poll();
+});
+
+// ---------- Onglets ----------
+let mapBuilt = false;
+function showTab(id) {
+  for (const b of document.querySelectorAll(".tabs button")) b.setAttribute("aria-selected", b.dataset.tab === id);
+  for (const v of document.querySelectorAll(".view")) v.hidden = v.id !== id;
+  if (id === "mapView") { if (!mapBuilt) { mapBuilt = true; buildMap(); } else applyVB(); renderMapStatus(); }
+  store.set("tab", id);
+}
+document.querySelector(".tabs").addEventListener("click", (e) => { const b = e.target.closest("button"); if (b) showTab(b.dataset.tab); });
+
+// ---------- Démarrage ----------
+$("#bootMsg").hidden = true;
+renderAll();
+showTab(store.get("tab", "listView"));
+showName();
+if (!online) {
+  const n = $("#notice"); n.hidden = false;
+  n.textContent = "Aperçu : ce fichier ouvert seul ne montre pas le suivi. Utilisez le lien de l'application pour voir et saisir les passages.";
+}
+renderSync();
+poll();
+setInterval(poll, POLL_MS);
+setInterval(() => renderSync(), 5000);
+document.addEventListener("visibilitychange", () => { if (!document.hidden) poll(); });
+})();
+</script>
+</body>
+</html>
